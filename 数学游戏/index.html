@@ -40,7 +40,11 @@
     to{ transform: translateY(110vh) rotate(360deg); }
   }
 
-  #app{ position:relative; z-index:1; max-width: 980px; margin: 0 auto; padding: 18px 20px 40px; }
+  #app{
+    position:relative; z-index:1; max-width: 980px; margin: 0 auto;
+    padding: calc(18px + env(safe-area-inset-top)) calc(20px + env(safe-area-inset-right))
+             calc(40px + env(safe-area-inset-bottom)) calc(20px + env(safe-area-inset-left));
+  }
 
   header.topbar{
     display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between;
@@ -68,8 +72,8 @@
 
   .controls{ display:flex; gap:6px; }
   .icon-btn{
-    border:none; background:#fff; width:38px; height:38px; border-radius:50%;
-    font-size:17px; cursor:pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+    border:none; background:#fff; width:44px; height:44px; border-radius:50%;
+    font-size:18px; cursor:pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.12);
     transition: transform 0.15s ease, opacity .2s;
   }
   .icon-btn:hover{ transform: scale(1.08); }
@@ -222,6 +226,24 @@
   .exch-demo-step.final{ font-size:16px; font-weight:700; color:#2f9e4f; }
   .answer-btn .unit-emoji{ font-size:0.6em; margin-left:4px; }
 
+  .exch-group .emo.numbered{ position:relative; display:inline-block; opacity:0; animation: popIn .25s ease-out both; }
+  .exch-group .emo.numbered .num{
+    position:absolute; top:-9px; left:50%; transform:translateX(-50%);
+    font-size:11px; font-weight:800; color:#ff7a45; background:#fff;
+    border-radius:50%; width:16px; height:16px; line-height:16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  }
+  @keyframes popIn{ from{ opacity:0; transform:scale(.4); } to{ opacity:1; transform:scale(1); } }
+  .exch-group .emo.numbered:nth-child(1){ animation-delay:.05s; }
+  .exch-group .emo.numbered:nth-child(2){ animation-delay:.18s; }
+  .exch-group .emo.numbered:nth-child(3){ animation-delay:.31s; }
+  .exch-group .emo.numbered:nth-child(4){ animation-delay:.44s; }
+  .exch-group .emo.numbered:nth-child(5){ animation-delay:.57s; }
+  .exch-group .emo.numbered:nth-child(6){ animation-delay:.70s; }
+  .exch-group .emo.numbered:nth-child(7){ animation-delay:.83s; }
+  .exch-group .emo.numbered:nth-child(8){ animation-delay:.96s; }
+  .exch-group .emo.numbered:nth-child(9){ animation-delay:1.09s; }
+
   @media (max-width: 560px){
     .equation{ font-size:40px; }
     .answer-btn{ font-size:24px; padding:14px 8px; }
@@ -230,6 +252,49 @@
     .exch-group .emo{ font-size:20px; }
     .exch-eq, .exch-unknown, .exch-arrow{ font-size:18px; }
     .exch-row, .exch-question{ font-size:13px; padding:6px 8px; }
+  }
+
+  /* 压缩非关键的统计/间距空间，让四个答案尽量在 390x844 / 375x667 首屏内完整显示；
+     不缩小/隐藏换算条件和物品数量（.exch-group .emo 字号不受此块影响） */
+  @media (max-width: 400px){
+    header.topbar{ padding: 8px 12px; gap:4px; }
+    .brand{ order:1; }
+    .brand .mascot{ font-size: 22px; }
+    .brand h1{ font-size: 12px; }
+    .controls{ order:2; gap:5px; }
+    .stats{
+      order:3; flex: 1 0 100%;
+      flex-wrap: nowrap; overflow-x: auto; justify-content: flex-start;
+      -webkit-overflow-scrolling: touch; padding-bottom: 2px;
+      gap:5px; font-size:10px;
+    }
+    .stat{ padding:3px 6px; }
+    .stat b{ font-size:11px; }
+    .mastery-wrap{ padding:3px 6px; gap:4px; }
+    .mastery-bar{ width:34px; height:6px; }
+    .mode-tabs{ margin: 10px auto 0; gap:6px; }
+    .mode-tab{ padding:6px 12px; font-size:12px; }
+    .question-card{ padding: 14px 12px 12px; }
+    .equation{ font-size:30px; margin:4px 0 10px; }
+    .exchange-board{ margin: 2px 0 6px; }
+    .exch-conditions{ margin-bottom:6px; gap:5px; }
+    .exch-row, .exch-question{ padding:4px 7px; }
+    .exch-demo-controls{ margin: 6px 0; }
+    .demo-btn{ padding:6px 14px; font-size:13px; }
+    .exch-demo-area{ min-height: 0; margin-bottom:4px; }
+    .answers{ gap:8px; margin-bottom:8px; }
+    .answer-btn{ padding:10px 6px; font-size:19px; }
+    .feedback{ min-height:28px; font-size:12px; margin:4px auto 8px; }
+    .next-btn{ padding:8px 18px; font-size:14px; }
+    footer.hint-line{ margin-top:8px; font-size:10px; }
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    .float-emoji{ animation: none; opacity: .35; }
+    .question-card.shake, .question-card.pop{ animation: none; }
+    .particle{ animation: none; opacity: 0; }
+    .exch-demo-step{ animation: none; }
+    .exch-group .emo.numbered{ animation: none; opacity: 1; }
   }
 </style>
 </head>
@@ -453,10 +518,17 @@ const SKILL_DEFS = [
 /* =========================================================================
  * 物品换物品（Item Exchange）—— 独立题型，与加减法分开记录学习进度
  * -------------------------------------------------------------------------
- * 规则：给出若干"换一换"条件（比如 1 辆汽车 = 2 块积木），从起始物品数量
- * 出发，按条件依次换算，最终换成目标物品，答案数量 <= 20。
- * 生成时保证每一步的中间数量都能"整组"换算（不会出现半组剩余）。
- * 难度从 1 组条件（一步换算）逐步升级到多组条件（多步连续换算）。
+ * 当前阶段固定规则（简化版，面向一年级低龄小朋友，不教乘法）：
+ *   - 恒为两步连续换算（3 种不同具体物品，2 组换算条件）；
+ *   - 每条换算条件左边恒为 1 个物品（如"1个汽车=2个积木"），问题左边
+ *     也恒为 1 个物品，不出现"2辆车=3块积木"这种左边>1的写法；
+ *   - 两级数量各在 1~3 之间随机，最终答案 = 两级数量相乘，但只在代码里
+ *     相乘，绝不向小朋友展示乘法/字母，呈现方式是分步动画 + 逐个数图形，
+ *     所以答案恒在 1~9 之间；
+ *   - 技能 id 用全新的 'exch2s'（而不是继续用旧的 exch1/exch2/exch3），
+ *     这样旧的三档"解锁更复杂题"的学习记录不会被清空，但也绝不会被
+ *     读取来解锁比"两步、左边恒1"更复杂的题——因为新规则下只有这一个
+ *     技能节点，没有"更复杂"的下一级可解锁。
  * ========================================================================= */
 const ITEMS = [
   { id: 'car', name: '汽车', emoji: '🚗' },
@@ -483,9 +555,7 @@ function permute(items, k){
 }
 
 const EXCHANGE_SKILLS = [
-  { id: 'exch1', name: '物品换物品（1组条件）', level: 1, steps: 1, genPool(){ return permute(ITEM_IDS, 2); } },
-  { id: 'exch2', name: '物品换物品（2组条件）', level: 2, steps: 2, genPool(){ return permute(ITEM_IDS, 3); } },
-  { id: 'exch3', name: '物品换物品（3组条件）', level: 3, steps: 3, genPool(){ return permute(ITEM_IDS, 4); } }
+  { id: 'exch2s', name: '物品换一换（两步换算）', level: 1, steps: 2, genPool(){ return permute(ITEM_IDS, 3); } }
 ];
 
 function factKeyOfChain(skillId, chain){ return `${skillId}:${chain.join('>')}`; }
@@ -511,55 +581,29 @@ function pickChain(skill){
 
 function randInt(min, max){ return min + Math.floor(Math.random() * (max - min + 1)); }
 
-function buildExchangeNumbers(steps){
-  const maxTries = 400;
-  for(let t = 0; t < maxTries; t++){
-    const U0 = randInt(1, 3);
-    const vMax0 = steps === 1 ? 6 : (steps === 2 ? 4 : 3);
-    const V0 = randInt(1, vMax0);
-    if(V0 === U0) continue;
-    const k0Max = steps === 1 ? 5 : (steps === 2 ? 3 : 2);
-    const k0 = randInt(1, k0Max);
-    const N0 = U0 * k0;
-    const conditions = [{ u: U0, v: V0 }];
-    let current = k0 * V0;
-    const amounts = [N0, current];
-    let ok = true;
-    for(let s = 1; s < steps; s++){
-      const divisorsPool = [1, 2, 3, 4].filter(d => current % d === 0);
-      if(divisorsPool.length === 0){ ok = false; break; }
-      const Us = pickOne(divisorsPool);
-      const times = current / Us;
-      const vMax = steps <= 2 ? 5 : 3;
-      const Vs = randInt(1, vMax);
-      if(Vs === Us){ ok = false; break; }
-      current = times * Vs;
-      conditions.push({ u: Us, v: Vs });
-      amounts.push(current);
-    }
-    if(!ok) continue;
-    const answer = current;
-    if(N0 >= 1 && N0 <= 12 && answer >= 2 && answer <= 20){
-      return { N0, conditions, answer, amounts };
-    }
-  }
-  const conditions = []; const amounts = [1];
-  let cur = 1;
-  for(let s = 0; s < steps; s++){ conditions.push({ u: 1, v: 2 }); cur *= 2; amounts.push(cur); }
-  return { N0: 1, conditions, answer: cur, amounts };
+function buildExchangeNumbers(){
+  // 固定两步、每条条件左边恒为 1：1 个起始物品先换 V1 个中间物品，
+  // 中间物品再"一个一个"换成 V2 个最终物品。V1、V2 各在 1~3 之间随机，
+  // 答案 = V1*V2（只在代码里相乘算结果，不向小朋友展示乘法），恒在 1~9。
+  const V1 = randInt(1, 3);
+  const V2 = randInt(1, 3);
+  const conditions = [{ u: 1, v: V1 }, { u: 1, v: V2 }];
+  const amounts = [1, V1, V1 * V2];
+  return { N0: 1, conditions, answer: V1 * V2, amounts };
 }
 
-function buildExchangeDistractors(amounts, answer){
+function buildExchangeDistractors(amounts, answer, v1, v2){
   const cands = new Set();
-  function add(v){ if(Number.isInteger(v) && v >= 1 && v <= 20 && v !== answer) cands.add(v); }
-  amounts.slice(0, -1).forEach(add);
+  function add(v){ if(Number.isInteger(v) && v >= 1 && v <= 9 && v !== answer) cands.add(v); }
+  amounts.slice(0, -1).forEach(add); // 常见错误：只换了第一步就当成答案
+  add(v1 + v2); // 常见错误：把两级数量加起来而不是逐个数完
   add(answer + 1); add(answer - 1); add(answer + 2); add(answer - 2);
   let arr = shuffle(Array.from(cands));
   let guard = 0;
   while(arr.length < 3 && guard < 40){
-    const v = answer + (Math.floor(Math.random() * 9) - 4);
+    const v = randInt(1, 9);
     guard++;
-    if(v >= 1 && v <= 20 && v !== answer && !arr.includes(v)) arr.push(v);
+    if(v !== answer && !arr.includes(v)) arr.push(v);
   }
   return arr.slice(0, 3);
 }
@@ -567,12 +611,12 @@ function buildExchangeDistractors(amounts, answer){
 function generateExchangeQuestion(skill){
   const { chain, factKey } = pickChain(skill);
   const itemsChain = chain.map(id => ITEMS.find(it => it.id === id));
-  const built = buildExchangeNumbers(itemsChain.length - 1);
+  const built = buildExchangeNumbers();
   lastFactKey = factKey;
   const conditions = built.conditions.map((c, i) => ({
     fromItem: itemsChain[i], fromCount: c.u, toItem: itemsChain[i + 1], toCount: c.v
   }));
-  const distractors = buildExchangeDistractors(built.amounts, built.answer);
+  const distractors = buildExchangeDistractors(built.amounts, built.answer, built.conditions[0].v, built.conditions[1].v);
   const options = shuffle([built.answer, ...distractors]);
   const fromItem = itemsChain[0], toItem = itemsChain[itemsChain.length - 1];
   const speakParts = conditions.map(c => `${c.fromCount}个${c.fromItem.name}可以换${c.toCount}个${c.toItem.name}`);
@@ -608,29 +652,50 @@ function renderExchangeBoard(q){
   document.getElementById('exchDemoBtn').addEventListener('click', advanceDemo);
 }
 
+function numberedEmoji(emoji, count){
+  let s = '';
+  for(let i = 0; i < count; i++){
+    s += `<span class="emo numbered"><span class="num">${i + 1}</span>${emoji}</span>`;
+  }
+  return s;
+}
+
 function advanceDemo(){
   const q = state.current;
   if(!q || q.type !== 'exchange') return;
-  const steps = q.conditions.length;
+  // 固定两步：第 1 步"1个起始物品 → V1个中间物品"（左边恒1，不用逐个拆）；
+  // 第 2 步"中间物品一个一个换成最终物品"，拆成 V1 个小步，每步换出V2个，
+  // 最后一步把全部最终物品"逐个数一数"（配数字小标签），全程不出现乘法。
+  const fromItem = q.itemsChain[0], midItem = q.itemsChain[1], toItem = q.itemsChain[2];
+  const V1 = q.conditions[0].toCount, V2 = q.conditions[1].toCount;
   state.demoStep = (state.demoStep || 0) + 1;
   state.hintShown = true;
   const area = document.getElementById('exchDemoArea');
   const btn = document.getElementById('exchDemoBtn');
   if(!area || !btn) return;
-  if(state.demoStep > steps){
-    area.innerHTML = `<div class="exch-demo-step final">数一数，一共有 <b>${q.answer}</b> 个 ${q.toItem.name}${q.toItem.emoji}</div>`;
-    speak(`最后数一数，一共有${q.answer}个${q.toItem.name}。`);
-    btn.textContent = '🔁 再看一次';
-    state.demoStep = 0;
+
+  if(state.demoStep === 1){
+    area.innerHTML = `<div class="exch-demo-step"><span class="exch-group">${repeatEmoji(fromItem.emoji, 1)}</span><span class="exch-arrow">→</span><span class="exch-group">${repeatEmoji(midItem.emoji, V1)}</span></div>`;
+    speak(`先把1个${fromItem.name}换成${V1}个${midItem.name}。`);
+    btn.textContent = '👉 下一步';
     return;
   }
-  const i = state.demoStep - 1;
-  const fromItem = q.itemsChain[i], toItem = q.itemsChain[i + 1];
-  const fromAmt = q.amounts[i], toAmt = q.amounts[i + 1];
-  const label = state.demoStep === 1 ? '先' : (state.demoStep === steps ? '接着' : '再');
-  area.innerHTML = `<div class="exch-demo-step"><span class="exch-group">${repeatEmoji(fromItem.emoji, fromAmt)}</span><span class="exch-arrow">→</span><span class="exch-group">${repeatEmoji(toItem.emoji, toAmt)}</span></div>`;
-  speak(`${label}把${fromAmt}个${fromItem.name}换成${toAmt}个${toItem.name}。`);
-  btn.textContent = state.demoStep < steps ? '👉 下一步' : '👉 数一数';
+  if(state.demoStep <= 1 + V1){
+    const i = state.demoStep - 1; // 第几块中间物品，1..V1
+    const soFar = i * V2;
+    area.innerHTML = `
+      <div class="exch-demo-step"><span class="exch-group">${repeatEmoji(midItem.emoji, 1)}</span><span class="exch-arrow">→</span><span class="exch-group">${repeatEmoji(toItem.emoji, V2)}</span></div>
+      <div class="exch-demo-step">现在一共有：<span class="exch-group">${repeatEmoji(toItem.emoji, soFar)}</span></div>
+    `;
+    speak(`再把第${i}个${midItem.name}换成${V2}个${toItem.name}，现在一共有${soFar}个${toItem.name}。`);
+    btn.textContent = i < V1 ? '👉 下一块' : '👉 数一数';
+    return;
+  }
+  const countWords = Array.from({ length: q.answer }, (_, i) => i + 1).join('、');
+  area.innerHTML = `<div class="exch-demo-step final"><span class="exch-group">${numberedEmoji(toItem.emoji, q.answer)}</span><br>${countWords}，一共有 <b>${q.answer}</b> 个 ${q.toItem.name}</div>`;
+  speak(`${countWords}，一共有${q.answer}个${q.toItem.name}。`);
+  btn.textContent = '🔁 再看一次';
+  state.demoStep = 0;
 }
 
 /* =========================================================================
