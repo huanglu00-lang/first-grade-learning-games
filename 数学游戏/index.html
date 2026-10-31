@@ -181,10 +181,55 @@
     text-align:center; font-size:12px; color:#5a7184; margin-top:16px; opacity:0.85;
   }
 
+  .mode-tabs{
+    display:flex; gap:10px; justify-content:center; flex-wrap:wrap;
+    margin: 18px auto 0; max-width:640px;
+  }
+  .mode-tab{
+    font-size:15px; font-weight:700; padding:10px 20px; border-radius:20px;
+    border:3px solid transparent; background:#fff; color:#5a7184; cursor:pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    transition: transform .15s ease, border-color .2s, background .2s, color .2s;
+  }
+  .mode-tab:hover{ transform: translateY(-2px); }
+  .mode-tab.active{ background:#5aa9e6; color:#fff; border-color:#2b4a63; box-shadow:0 4px 12px rgba(90,169,230,0.5); }
+
+  .exchange-board{ margin: 4px 0 18px; }
+  .exch-conditions{ display:flex; flex-direction:column; gap:10px; margin-bottom:14px; }
+  .exch-row, .exch-question{
+    display:flex; align-items:center; justify-content:center; flex-wrap:wrap;
+    gap:8px; font-size:15px; color:#5a7184; background:rgba(255,255,255,0.6);
+    border-radius:14px; padding:8px 10px;
+  }
+  .exch-question{ background:rgba(90,169,230,0.12); font-weight:700; }
+  .exch-group{ display:inline-flex; flex-wrap:wrap; gap:2px; justify-content:center; max-width: 100%; }
+  .exch-group .emo{ font-size:26px; line-height:1; }
+  .exch-eq{ font-size:22px; font-weight:800; color:#2b4a63; }
+  .exch-unknown{ font-size:22px; font-weight:800; color:#ff7a45; }
+  .exch-arrow{ font-size:26px; color:#5aa9e6; font-weight:800; }
+  .exch-demo-controls{ display:flex; justify-content:center; margin: 10px 0; }
+  .demo-btn{
+    border:none; border-radius:18px; padding:9px 18px; font-size:14px; font-weight:700;
+    background:#ffd36e; color:#5a3b00; cursor:pointer; box-shadow:0 4px 10px rgba(0,0,0,0.12);
+    transition: transform .15s ease;
+  }
+  .demo-btn:hover{ transform: translateY(-2px); }
+  .exch-demo-area{ min-height: 44px; margin-bottom: 6px; }
+  .exch-demo-step{
+    display:flex; align-items:center; justify-content:center; gap:10px; flex-wrap:wrap;
+    font-size:15px; color:#2b4a63; animation: popCard 0.4s;
+  }
+  .exch-demo-step.final{ font-size:16px; font-weight:700; color:#2f9e4f; }
+  .answer-btn .unit-emoji{ font-size:0.6em; margin-left:4px; }
+
   @media (max-width: 560px){
     .equation{ font-size:40px; }
     .answer-btn{ font-size:24px; padding:14px 8px; }
     .stats{ font-size:12px; }
+    .mode-tab{ font-size:13px; padding:8px 14px; }
+    .exch-group .emo{ font-size:20px; }
+    .exch-eq, .exch-unknown, .exch-arrow{ font-size:18px; }
+    .exch-row, .exch-question{ font-size:13px; padding:6px 8px; }
   }
 </style>
 </head>
@@ -216,10 +261,16 @@
     </div>
   </header>
 
+  <div class="mode-tabs" id="modeTabs">
+    <button class="mode-tab active" id="modeArithBtn" data-mode="arith">➕➖ 加减法</button>
+    <button class="mode-tab" id="modeExchBtn" data-mode="exchange">🔄 物品换一换</button>
+  </div>
+
   <main class="game-area">
     <div class="question-card" id="questionCard">
       <div class="mascot-line" id="mascotLine"></div>
       <div class="equation" id="equationText">8 + 7 = ?</div>
+      <div class="exchange-board" id="exchangeBoard" style="display:none;"></div>
       <div class="answers" id="answersGrid"></div>
       <div class="feedback" id="feedbackBox"></div>
       <div class="actions">
@@ -400,6 +451,189 @@ const SKILL_DEFS = [
 ];
 
 /* =========================================================================
+ * 物品换物品（Item Exchange）—— 独立题型，与加减法分开记录学习进度
+ * -------------------------------------------------------------------------
+ * 规则：给出若干"换一换"条件（比如 1 辆汽车 = 2 块积木），从起始物品数量
+ * 出发，按条件依次换算，最终换成目标物品，答案数量 <= 20。
+ * 生成时保证每一步的中间数量都能"整组"换算（不会出现半组剩余）。
+ * 难度从 1 组条件（一步换算）逐步升级到多组条件（多步连续换算）。
+ * ========================================================================= */
+const ITEMS = [
+  { id: 'car', name: '汽车', emoji: '🚗' },
+  { id: 'block', name: '积木', emoji: '🧱' },
+  { id: 'ball', name: '小球', emoji: '⚽' },
+  { id: 'balloon', name: '气球', emoji: '🎈' },
+  { id: 'apple', name: '苹果', emoji: '🍎' },
+  { id: 'doll', name: '玩偶', emoji: '🧸' }
+];
+const ITEM_IDS = ITEMS.map(it => it.id);
+
+function permute(items, k){
+  const results = [];
+  function rec(remaining, chosen){
+    if(chosen.length === k){ results.push(chosen.slice()); return; }
+    for(let i = 0; i < remaining.length; i++){
+      const next = remaining.slice();
+      const item = next.splice(i, 1)[0];
+      rec(next, chosen.concat([item]));
+    }
+  }
+  rec(items, []);
+  return results;
+}
+
+const EXCHANGE_SKILLS = [
+  { id: 'exch1', name: '物品换物品（1组条件）', level: 1, steps: 1, genPool(){ return permute(ITEM_IDS, 2); } },
+  { id: 'exch2', name: '物品换物品（2组条件）', level: 2, steps: 2, genPool(){ return permute(ITEM_IDS, 3); } },
+  { id: 'exch3', name: '物品换物品（3组条件）', level: 3, steps: 3, genPool(){ return permute(ITEM_IDS, 4); } }
+];
+
+function factKeyOfChain(skillId, chain){ return `${skillId}:${chain.join('>')}`; }
+
+function pickChain(skill){
+  const pool = skill.genPool();
+  const weights = pool.map(chain => {
+    const key = factKeyOfChain(skill.id, chain);
+    const stat = getFactStat(key);
+    let w = Math.max(5, 100 - stat.mastery) + 8;
+    if(key === lastFactKey) w *= 0.15;
+    return w;
+  });
+  const total = weights.reduce((s, w) => s + w, 0);
+  let r = Math.random() * total;
+  for(let i = 0; i < pool.length; i++){
+    r -= weights[i];
+    if(r <= 0) return { chain: pool[i], factKey: factKeyOfChain(skill.id, pool[i]) };
+  }
+  const last = pool[pool.length - 1];
+  return { chain: last, factKey: factKeyOfChain(skill.id, last) };
+}
+
+function randInt(min, max){ return min + Math.floor(Math.random() * (max - min + 1)); }
+
+function buildExchangeNumbers(steps){
+  const maxTries = 400;
+  for(let t = 0; t < maxTries; t++){
+    const U0 = randInt(1, 3);
+    const vMax0 = steps === 1 ? 6 : (steps === 2 ? 4 : 3);
+    const V0 = randInt(1, vMax0);
+    if(V0 === U0) continue;
+    const k0Max = steps === 1 ? 5 : (steps === 2 ? 3 : 2);
+    const k0 = randInt(1, k0Max);
+    const N0 = U0 * k0;
+    const conditions = [{ u: U0, v: V0 }];
+    let current = k0 * V0;
+    const amounts = [N0, current];
+    let ok = true;
+    for(let s = 1; s < steps; s++){
+      const divisorsPool = [1, 2, 3, 4].filter(d => current % d === 0);
+      if(divisorsPool.length === 0){ ok = false; break; }
+      const Us = pickOne(divisorsPool);
+      const times = current / Us;
+      const vMax = steps <= 2 ? 5 : 3;
+      const Vs = randInt(1, vMax);
+      if(Vs === Us){ ok = false; break; }
+      current = times * Vs;
+      conditions.push({ u: Us, v: Vs });
+      amounts.push(current);
+    }
+    if(!ok) continue;
+    const answer = current;
+    if(N0 >= 1 && N0 <= 12 && answer >= 2 && answer <= 20){
+      return { N0, conditions, answer, amounts };
+    }
+  }
+  const conditions = []; const amounts = [1];
+  let cur = 1;
+  for(let s = 0; s < steps; s++){ conditions.push({ u: 1, v: 2 }); cur *= 2; amounts.push(cur); }
+  return { N0: 1, conditions, answer: cur, amounts };
+}
+
+function buildExchangeDistractors(amounts, answer){
+  const cands = new Set();
+  function add(v){ if(Number.isInteger(v) && v >= 1 && v <= 20 && v !== answer) cands.add(v); }
+  amounts.slice(0, -1).forEach(add);
+  add(answer + 1); add(answer - 1); add(answer + 2); add(answer - 2);
+  let arr = shuffle(Array.from(cands));
+  let guard = 0;
+  while(arr.length < 3 && guard < 40){
+    const v = answer + (Math.floor(Math.random() * 9) - 4);
+    guard++;
+    if(v >= 1 && v <= 20 && v !== answer && !arr.includes(v)) arr.push(v);
+  }
+  return arr.slice(0, 3);
+}
+
+function generateExchangeQuestion(skill){
+  const { chain, factKey } = pickChain(skill);
+  const itemsChain = chain.map(id => ITEMS.find(it => it.id === id));
+  const built = buildExchangeNumbers(itemsChain.length - 1);
+  lastFactKey = factKey;
+  const conditions = built.conditions.map((c, i) => ({
+    fromItem: itemsChain[i], fromCount: c.u, toItem: itemsChain[i + 1], toCount: c.v
+  }));
+  const distractors = buildExchangeDistractors(built.amounts, built.answer);
+  const options = shuffle([built.answer, ...distractors]);
+  const fromItem = itemsChain[0], toItem = itemsChain[itemsChain.length - 1];
+  const speakParts = conditions.map(c => `${c.fromCount}个${c.fromItem.name}可以换${c.toCount}个${c.toItem.name}`);
+  const speak = `${speakParts.join('，')}。那么${built.N0}个${fromItem.name}可以换几个${toItem.name}？`;
+  return {
+    type: 'exchange', skill, factKey, answer: built.answer, options,
+    N0: built.N0, fromItem, toItem, itemsChain, amounts: built.amounts,
+    conditions, speak
+  };
+}
+
+function buildExchangeHint(q){
+  const condText = q.conditions.map(c => `${c.fromCount}个${c.fromItem.name}换${c.toCount}个${c.toItem.name}`).join('，再');
+  return `再想想：${condText}，那么${q.N0}个${q.fromItem.name}最后能换到${q.answer}个${q.toItem.name}。点一点"🔍看看怎么换"，跟着分步演示数一数吧！`;
+}
+
+function repeatEmoji(emoji, count){
+  let s = '';
+  for(let i = 0; i < count; i++) s += `<span class="emo">${emoji}</span>`;
+  return s;
+}
+
+function renderExchangeBoard(q){
+  let html = '<div class="exch-conditions">';
+  q.conditions.forEach(c => {
+    html += `<div class="exch-row"><span class="exch-group">${repeatEmoji(c.fromItem.emoji, c.fromCount)}</span><span class="exch-eq">=</span><span class="exch-group">${repeatEmoji(c.toItem.emoji, c.toCount)}</span></div>`;
+  });
+  html += '</div>';
+  html += `<div class="exch-question"><span class="exch-group">${repeatEmoji(q.fromItem.emoji, q.N0)}</span><span class="exch-eq">=</span><span class="exch-group exch-unknown">？${q.toItem.emoji}</span></div>`;
+  html += `<div class="exch-demo-controls"><button class="demo-btn" id="exchDemoBtn">🔍 看看怎么换</button></div>`;
+  html += `<div class="exch-demo-area" id="exchDemoArea"></div>`;
+  el.exchangeBoard.innerHTML = html;
+  document.getElementById('exchDemoBtn').addEventListener('click', advanceDemo);
+}
+
+function advanceDemo(){
+  const q = state.current;
+  if(!q || q.type !== 'exchange') return;
+  const steps = q.conditions.length;
+  state.demoStep = (state.demoStep || 0) + 1;
+  state.hintShown = true;
+  const area = document.getElementById('exchDemoArea');
+  const btn = document.getElementById('exchDemoBtn');
+  if(!area || !btn) return;
+  if(state.demoStep > steps){
+    area.innerHTML = `<div class="exch-demo-step final">数一数，一共有 <b>${q.answer}</b> 个 ${q.toItem.name}${q.toItem.emoji}</div>`;
+    speak(`最后数一数，一共有${q.answer}个${q.toItem.name}。`);
+    btn.textContent = '🔁 再看一次';
+    state.demoStep = 0;
+    return;
+  }
+  const i = state.demoStep - 1;
+  const fromItem = q.itemsChain[i], toItem = q.itemsChain[i + 1];
+  const fromAmt = q.amounts[i], toAmt = q.amounts[i + 1];
+  const label = state.demoStep === 1 ? '先' : (state.demoStep === steps ? '接着' : '再');
+  area.innerHTML = `<div class="exch-demo-step"><span class="exch-group">${repeatEmoji(fromItem.emoji, fromAmt)}</span><span class="exch-arrow">→</span><span class="exch-group">${repeatEmoji(toItem.emoji, toAmt)}</span></div>`;
+  speak(`${label}把${fromAmt}个${fromItem.name}换成${toAmt}个${toItem.name}。`);
+  btn.textContent = state.demoStep < steps ? '👉 下一步' : '👉 数一数';
+}
+
+/* =========================================================================
  * 主题（原创角色，非影视 IP）—— 每局随机切换
  * ========================================================================= */
 const THEMES = {
@@ -438,20 +672,22 @@ function factKeyOf(skillId, a, b){ return `${skillId}:${a}:${b}`; }
  * ========================================================================= */
 let lastFactKey = null;
 
-function unlockedSkills(){
-  const result = [SKILL_DEFS[0]];
-  for(let i = 1; i < SKILL_DEFS.length; i++){
-    const prev = SKILL_DEFS[i - 1];
+function unlockedSkillsOf(list){
+  const result = [list[0]];
+  for(let i = 1; i < list.length; i++){
+    const prev = list[i - 1];
     const prevStat = getSkillStat(prev.id);
     if(prevStat.attempts >= 6 && prevStat.mastery >= 40){
-      result.push(SKILL_DEFS[i]);
+      result.push(list[i]);
     } else break;
   }
   return result;
 }
+function skillListForMode(mode){ return mode === 'exchange' ? EXCHANGE_SKILLS : SKILL_DEFS; }
+function unlockedSkills(){ return unlockedSkillsOf(skillListForMode(currentMode)); }
 
-function pickSkill(){
-  const unlocked = unlockedSkills();
+function pickSkill(mode){
+  const unlocked = unlockedSkillsOf(skillListForMode(mode));
   const weights = unlocked.map((skill, idx) => {
     const stat = getSkillStat(skill.id);
     const recencyBonus = (idx === unlocked.length - 1) ? 40 : 10;
@@ -509,8 +745,7 @@ function buildDistractors(op, a, b, answer){
   return arr.slice(0, 3);
 }
 
-function generateQuestion(){
-  const skill = pickSkill();
+function generateArithQuestion(skill){
   const { a, b } = pickFact(skill);
   const flip = Math.random() < 0.5;
   const answer = skill.op === '+' ? a + b : a - b;
@@ -519,7 +754,13 @@ function generateQuestion(){
   lastFactKey = factKey;
   const distractors = buildDistractors(skill.op, a, b, answer);
   const options = shuffle([answer, ...distractors]);
-  return { skill, a, b, answer, factKey, display: rendered.display, speak: rendered.speak, options };
+  return { type: 'arith', skill, a, b, answer, factKey, display: rendered.display, speak: rendered.speak, options };
+}
+
+function generateQuestion(){
+  const skill = pickSkill(currentMode);
+  if(currentMode === 'exchange') return generateExchangeQuestion(skill);
+  return generateArithQuestion(skill);
 }
 
 function updateStats(factKey, skillId, correct){
@@ -570,7 +811,7 @@ function speak(text, opts){
   }catch(e){ /* speech unsupported: fail silently */ }
 }
 function replayLast(){
-  if(lastSpokenText) speak(lastSpokenText, { force: true });
+  if(lastSpokenText) speak(lastSpokenText);
 }
 
 let audioCtx = null;
@@ -602,6 +843,7 @@ function sfxWrong(){ playTone(180, 0.25, 'sawtooth'); }
  * 游戏状态与渲染
  * ========================================================================= */
 let currentTheme = null;
+let currentMode = 'arith';
 let score = 0, streak = 0, questionNum = 0;
 let state = { current: null, answered: false, firstAttemptDone: false };
 
@@ -619,6 +861,9 @@ const el = {
   questionCard: document.getElementById('questionCard'),
   mascotLine: document.getElementById('mascotLine'),
   equationText: document.getElementById('equationText'),
+  exchangeBoard: document.getElementById('exchangeBoard'),
+  modeArithBtn: document.getElementById('modeArithBtn'),
+  modeExchBtn: document.getElementById('modeExchBtn'),
   answersGrid: document.getElementById('answersGrid'),
   feedbackBox: document.getElementById('feedbackBox'),
   nextBtn: document.getElementById('nextBtn'),
@@ -682,14 +927,18 @@ function spawnReward(){
   }
 }
 
-function renderAnswers(options, state){
+function renderAnswers(q){
   el.answersGrid.innerHTML = '';
-  options.forEach((val, idx) => {
+  q.options.forEach((val, idx) => {
     const btn = document.createElement('button');
     btn.className = 'answer-btn';
     btn.dataset.idx = idx;
     btn.dataset.val = val;
-    btn.innerHTML = `<span class="badge">${idx + 1}</span><span class="val">${val}</span>`;
+    if(q.type === 'exchange'){
+      btn.innerHTML = `<span class="badge">${idx + 1}</span><span class="val">${val}</span><span class="unit-emoji">${q.toItem.emoji}</span>`;
+    } else {
+      btn.innerHTML = `<span class="badge">${idx + 1}</span><span class="val">${val}</span>`;
+    }
     btn.addEventListener('click', () => onAnswer(val, btn));
     el.answersGrid.appendChild(btn);
   });
@@ -698,14 +947,21 @@ function renderAnswers(options, state){
 function newQuestion(){
   questionNum++;
   const q = generateQuestion();
-  state = { current: q, answered: false, firstAttemptDone: false };
-  el.equationText.textContent = q.display;
+  state = { current: q, answered: false, firstAttemptDone: false, demoStep: 0 };
+  if(q.type === 'exchange'){
+    el.equationText.style.display = 'none';
+    el.exchangeBoard.style.display = '';
+    renderExchangeBoard(q);
+  } else {
+    el.exchangeBoard.style.display = 'none';
+    el.equationText.style.display = '';
+    el.equationText.textContent = q.display;
+  }
   el.feedbackBox.textContent = '';
   el.feedbackBox.className = 'feedback';
   el.nextBtn.disabled = true;
-  renderAnswers(q.options, state);
+  renderAnswers(q);
   updateHeader();
-  const line = pickOne(currentTheme.greetings);
   el.mascotLine.textContent = '';
   speak(q.speak);
 }
@@ -744,7 +1000,7 @@ function onAnswer(val, btn){
     streak = 0;
     btn.classList.add('wrong', 'disabled');
     state.hintShown = true;
-    const hint = q.skill.hint(q.a, q.b, q.answer);
+    const hint = q.type === 'exchange' ? buildExchangeHint(q) : q.skill.hint(q.a, q.b, q.answer);
     const comfort = pickOne(currentTheme.encourage);
     el.feedbackBox.textContent = `✘ ${comfort} ${hint}`;
     el.feedbackBox.className = 'feedback bad';
@@ -787,7 +1043,16 @@ function clearLearningRecord(){
   saveStore();
   startNewRound();
 }
+function switchMode(mode){
+  if(mode === currentMode) return;
+  currentMode = mode;
+  el.modeArithBtn.classList.toggle('active', mode === 'arith');
+  el.modeExchBtn.classList.toggle('active', mode === 'exchange');
+  newQuestion();
+}
 
+el.modeArithBtn.addEventListener('click', () => switchMode('arith'));
+el.modeExchBtn.addEventListener('click', () => switchMode('exchange'));
 el.toggleSpeech.addEventListener('click', toggleSpeechSetting);
 el.toggleSfx.addEventListener('click', toggleSfxSetting);
 el.replayBtn.addEventListener('click', replayLast);
