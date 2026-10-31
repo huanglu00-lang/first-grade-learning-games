@@ -638,28 +638,42 @@ window.setNativeVoiceInfo=function(label,hasVoice){
 };
 
 let pendingSpeakTimer=null;
-function speakText(text,kind){
+let autoNextTimer=null, speechTicket=0;
+function cancelAutoNext(){
+  speechTicket++;
+  if(autoNextTimer!==null){clearTimeout(autoNextTimer);autoNextTimer=null;}
+}
+function speakText(text,kind,onDone){
+  cancelAutoNext();
+  const ticket=speechTicket;
+  const complete=()=>{
+    if(ticket!==speechTicket||!onDone)return;
+    autoNextTimer=setTimeout(()=>{autoNextTimer=null;if(ticket===speechTicket)onDone();},650);
+  };
   if(pendingSpeakTimer){ clearTimeout(pendingSpeakTimer); pendingSpeakTimer=null; }
   if(hasNativeTTS()){
     window.webkit.messageHandlers.speak.postMessage({type:'speak',text:text,kind:kind||'sentence'});
     return;
   }
-  if(!('speechSynthesis'in window))return;
+  if(!('speechSynthesis'in window)){complete();return;}
   speechSynthesis.cancel();
   const u=new SpeechSynthesisUtterance(text);
   u.lang='zh-CN';u.rate=.82;
   if(zhVoice)u.voice=zhVoice;
+  u.onend=complete;
+  u.onerror=e=>{if(e.error!=='canceled'&&e.error!=='interrupted')complete();};
   speechSynthesis.speak(u);
 }
-function speakAfterChime(text,kind){
-  if(!sfxOn){ speakText(text,kind); return; }
+function speakAfterChime(text,kind,onDone){
+  if(!sfxOn){ speakText(text,kind,onDone); return; }
   if(pendingSpeakTimer)clearTimeout(pendingSpeakTimer);
   pendingSpeakTimer=setTimeout(()=>{
     pendingSpeakTimer=null;
-    speakText(text,kind);
-  },220);
+    speakText(text,kind,onDone);
+  },380);
 }
 function stopSpeaking(){
+  cancelAutoNext();
   if(pendingSpeakTimer){ clearTimeout(pendingSpeakTimer); pendingSpeakTimer=null; }
   if(hasNativeTTS()){
     window.webkit.messageHandlers.speak.postMessage({type:'stop'});
@@ -755,6 +769,7 @@ function setMode(m){
   start();
 }
 function start(){
+  stopSpeaking();
   applyTheme(Math.random()<.5?THEMES.ice:THEMES.toy);
   deck=weightedSample(getPool(),ROUND_LEN);
   index=0;score=0;streak=0;correct=0;crystalsCollected=0;
@@ -793,7 +808,8 @@ function render(){
   const opts=shuffle([[char,py],...others]);
   $('choices').innerHTML=opts.map(([c],i)=>`<button class="choice" data-char="${c}"><span class="kbdHint">${i+1}</span>${c}</button>`).join('');
   document.querySelectorAll('.choice').forEach(b=>b.onclick=()=>choose(b));
-  setTimeout(speakChar,250);
+  const renderedDeck=deck, renderedIndex=index;
+  setTimeout(()=>{if(deck===renderedDeck&&index===renderedIndex&&!answered)speakChar();},250);
   syncTouchBarAnswers();
 }
 function syncTouchBarAnswers(){
@@ -828,7 +844,8 @@ function choose(btn){
     const answerExample=exampleOf(char);
     const answerText=`答对了，这个字是${char}`+(answerExample?`，组词${answerExample}`:'');
     $('reveal').textContent=`原来是：${char}（${py}）`+(answerExample?`　组词：${answerExample}`:'');
-    speakAfterChime(answerText,'praise');
+    const answeredIndex=index;
+    speakAfterChime(answerText,'praise',()=>{if(answered&&index===answeredIndex)next();});
   }else{
     btn.classList.add('wrong','dim');
     btn.disabled=true;
@@ -844,6 +861,7 @@ function choose(btn){
 }
 function next(){
   if(!answered)return;
+  stopSpeaking();
   if(index===ROUND_LEN-1){
     $('game').style.display='none';
     $('finish').classList.add('show');
