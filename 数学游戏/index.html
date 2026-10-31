@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>数学闯关 · 一年级小朋友专用</title>
+<style>
+  :root{
+    --card-radius: 22px;
+    --shadow: 0 10px 30px rgba(0,0,0,0.15);
+  }
+  *{ box-sizing: border-box; }
+  html,body{
+    margin:0; padding:0; height:100%;
+    font-family: "PingFang SC","Microsoft YaHei","Helvetica Neue",Arial,sans-serif;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+  body{
+    min-height:100vh;
+    transition: background 0.8s ease;
+    color:#213547;
+  }
+  body.theme-ice{
+    background: linear-gradient(160deg,#dff3ff 0%,#aee3ff 35%,#8fd6f6 70%,#6fc3e8 100%);
+  }
+  body.theme-toy{
+    background: linear-gradient(160deg,#fff3da 0%,#ffe0b0 35%,#ffc98a 70%,#ffb570 100%);
+  }
+  #bgDecor{
+    position:fixed; inset:0; overflow:hidden; pointer-events:none; z-index:0;
+  }
+  .float-emoji{
+    position:absolute; font-size: 34px; opacity:0.55; top:-60px;
+    animation: drift linear infinite;
+    filter: drop-shadow(0 4px 6px rgba(0,0,0,0.15));
+  }
+  @keyframes drift{
+    from{ transform: translateY(-10vh) rotate(0deg); }
+    to{ transform: translateY(110vh) rotate(360deg); }
+  }
+
+  #app{ position:relative; z-index:1; max-width: 980px; margin: 0 auto; padding: 18px 20px 40px; }
+
+  header.topbar{
+    display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between;
+    gap:10px;
+    background: rgba(255,255,255,0.72);
+    border-radius: var(--card-radius);
+    padding: 12px 18px;
+    box-shadow: var(--shadow);
+    backdrop-filter: blur(4px);
+  }
+  .brand{ display:flex; align-items:center; gap:10px; }
+  .brand .mascot{ font-size: 36px; }
+  .brand h1{ font-size: 18px; margin:0; font-weight:700; color:#2b4a63; }
+  .stats{ display:flex; flex-wrap:wrap; gap:10px; align-items:center; font-size: 13px; }
+  .stat{
+    background:#fff; border-radius: 12px; padding: 6px 10px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+    white-space:nowrap;
+  }
+  .stat b{ font-size:15px; color:#ff7a45; margin-left:3px; }
+  .stat.warn b{ color:#e0455a; }
+  .mastery-wrap{ display:flex; align-items:center; gap:6px; background:#fff; border-radius:12px; padding:6px 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.08); }
+  .mastery-bar{ width:70px; height:8px; border-radius:6px; background:#eee; overflow:hidden; }
+  .mastery-fill{ height:100%; background: linear-gradient(90deg,#7bd389,#3fae5a); transition: width 0.4s ease; }
+
+  .controls{ display:flex; gap:6px; }
+  .icon-btn{
+    border:none; background:#fff; width:38px; height:38px; border-radius:50%;
+    font-size:17px; cursor:pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+    transition: transform 0.15s ease, opacity .2s;
+  }
+  .icon-btn:hover{ transform: scale(1.08); }
+  .icon-btn.off{ opacity:0.4; }
+  .icon-btn.danger{ background:#ffe3e3; }
+
+  main.game-area{ margin-top: 22px; display:flex; justify-content:center; }
+
+  .question-card{
+    background: rgba(255,255,255,0.88);
+    border-radius: 28px;
+    box-shadow: var(--shadow);
+    padding: 30px 26px 26px;
+    width: 100%; max-width: 640px;
+    text-align:center;
+    position:relative;
+  }
+  .question-card.shake{ animation: shakeCard 0.4s; }
+  @keyframes shakeCard{
+    0%,100%{ transform: translateX(0); }
+    25%{ transform: translateX(-8px); }
+    75%{ transform: translateX(8px); }
+  }
+  .question-card.pop{ animation: popCard 0.5s; }
+  @keyframes popCard{
+    0%{ transform: scale(1); }
+    40%{ transform: scale(1.04); }
+    100%{ transform: scale(1); }
+  }
+
+  .mascot-line{ font-size:14px; color:#5a7184; margin-bottom: 6px; min-height: 18px; }
+
+  .equation{
+    font-size: 58px; font-weight: 800; letter-spacing: 2px; color:#2b4a63;
+    margin: 6px 0 22px;
+  }
+
+  .answers{
+    display:grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 0 auto 16px;
+    max-width: 480px;
+  }
+  .answer-btn{
+    position:relative;
+    font-size: 30px; font-weight:700; padding: 18px 10px;
+    border-radius: 18px; border: 3px solid transparent;
+    background: #ffffff; cursor:pointer;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    transition: transform .12s ease, border-color .2s, background .2s;
+    color:#2b4a63;
+  }
+  .answer-btn .badge{
+    position:absolute; top:-10px; left:-10px;
+    width:26px; height:26px; border-radius:50%;
+    background:#5aa9e6; color:#fff; font-size:14px; font-weight:700;
+    display:flex; align-items:center; justify-content:center;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+  }
+  .answer-btn:hover:not(.disabled):not(.locked){ transform: translateY(-3px); border-color:#8fcbee; }
+  .answer-btn:active:not(.disabled):not(.locked){ transform: translateY(0); }
+  .answer-btn.correct{ background:#d7f7df; border-color:#3fae5a; }
+  .answer-btn.wrong{ background:#ffe1e1; border-color:#e0455a; color:#b23; }
+  .answer-btn.disabled{ opacity:0.55; cursor:not-allowed; }
+  .answer-btn.locked{ cursor:default; }
+
+  .feedback{
+    min-height: 46px; font-size: 16px; line-height:1.5; color:#45607a;
+    margin: 6px auto 14px; max-width: 520px;
+  }
+  .feedback.good{ color:#2f9e4f; font-weight:700; }
+  .feedback.bad{ color:#c0394c; }
+
+  .actions{ display:flex; justify-content:center; }
+  .next-btn{
+    font-size:17px; font-weight:700; padding: 11px 26px; border-radius: 24px;
+    border:none; background:#5aa9e6; color:#fff; cursor:pointer;
+    box-shadow: 0 6px 14px rgba(90,169,230,0.5);
+    transition: opacity .2s, transform .15s;
+  }
+  .next-btn:disabled{ opacity:0.35; cursor:not-allowed; box-shadow:none; }
+  .next-btn:not(:disabled):hover{ transform: translateY(-2px); }
+
+  #rewardLayer{ position:fixed; inset:0; pointer-events:none; z-index:50; overflow:hidden; }
+  .particle{
+    position:absolute; bottom:18%; font-size:28px;
+    animation: floatUp var(--dur,1.2s) ease-out forwards;
+  }
+  @keyframes floatUp{
+    to{ transform: translate(var(--dx,0px), -260px) scale(1.5) rotate(25deg); opacity:0; }
+  }
+
+  .modal{
+    position:fixed; inset:0; background:rgba(0,0,0,0.4);
+    display:flex; align-items:center; justify-content:center; z-index:100;
+  }
+  .modal.hidden{ display:none; }
+  .modal-box{
+    background:#fff; border-radius:18px; padding: 24px 26px; max-width:360px; text-align:center;
+    box-shadow: 0 12px 30px rgba(0,0,0,0.3);
+  }
+  .modal-box p{ font-size:15px; color:#334; margin: 0 0 18px; }
+  .modal-actions{ display:flex; gap:12px; justify-content:center; }
+  .modal-actions button{
+    border:none; border-radius:14px; padding:9px 18px; font-size:14px; cursor:pointer; font-weight:700;
+  }
+  .modal-actions .danger{ background:#e0455a; color:#fff; }
+  .modal-actions button:not(.danger){ background:#eee; color:#333; }
+
+  footer.hint-line{
+    text-align:center; font-size:12px; color:#5a7184; margin-top:16px; opacity:0.85;
+  }
+
+  @media (max-width: 560px){
+    .equation{ font-size:40px; }
+    .answer-btn{ font-size:24px; padding:14px 8px; }
+    .stats{ font-size:12px; }
+  }
+</style>
+</head>
+<body>
+<div id="bgDecor"></div>
+<div id="app">
+  <header class="topbar">
+    <div class="brand">
+      <span class="mascot" id="mascotEmoji">❄️</span>
+      <h1 id="themeTitle">冰雪王国 · 数学闯关</h1>
+    </div>
+    <div class="stats">
+      <div class="stat">得分 <b id="scoreVal">0</b></div>
+      <div class="stat">连对 <b id="streakVal">0</b></div>
+      <div class="stat">第 <b id="questionNum">1</b> 题</div>
+      <div class="stat">难度 <b id="levelVal">Lv.1</b></div>
+      <div class="mastery-wrap">掌握度
+        <div class="mastery-bar"><div class="mastery-fill" id="masteryFill" style="width:30%"></div></div>
+      </div>
+      <div class="stat warn">重点复习 <b id="reviewVal">0</b></div>
+      <div class="stat">共练习 <b id="totalVal">0</b> 题</div>
+    </div>
+    <div class="controls">
+      <button class="icon-btn" id="toggleSpeech" title="朗读开关">🔊</button>
+      <button class="icon-btn" id="toggleSfx" title="音效开关">🎵</button>
+      <button class="icon-btn" id="replayBtn" title="再听一次 (空格)">🔁</button>
+      <button class="icon-btn" id="newRoundBtn" title="开启新的一局（随机换主题）">🔄</button>
+      <button class="icon-btn danger" id="clearRecordBtn" title="清除学习记录">🗑</button>
+    </div>
+  </header>
+
+  <main class="game-area">
+    <div class="question-card" id="questionCard">
+      <div class="mascot-line" id="mascotLine"></div>
+      <div class="equation" id="equationText">8 + 7 = ?</div>
+      <div class="answers" id="answersGrid"></div>
+      <div class="feedback" id="feedbackBox"></div>
+      <div class="actions">
+        <button class="next-btn" id="nextBtn" disabled>下一题 ▶（Enter）</button>
+      </div>
+    </div>
+  </main>
+
+  <footer class="hint-line">鼠标点击答案卡，也可以用键盘 1-4 选择答案、Enter 下一题、空格再听一次</footer>
+</div>
+
+<div id="rewardLayer"></div>
+
+<div class="modal hidden" id="clearConfirmModal">
+  <div class="modal-box">
+    <p>确定要清除所有学习记录吗？<br>这会清空每道题的错题次数和掌握度，并重新从最简单的题目开始。此操作不可恢复。</p>
+    <div class="modal-actions">
+      <button class="danger" id="confirmClearBtn">确定清除</button>
+      <button id="cancelClearBtn">取消</button>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+/* =========================================================================
+ * 学习记录存储（Learning Record Store）
+ * -------------------------------------------------------------------------
+ * 升级接口说明：
+ * 1. 每条知识点 / 题目的学习记录都以稳定的字符串 id 作为 key 存在 localStorage 中。
+ * 2. 以后新增题型/题库时，只需要在下面的 SKILL_DEFS 数组里追加新的技能对象，
+ *    并给它一个"从未用过"的 id，不会影响、也不会被已有记录影响。
+ * 3. 千万不要修改/复用已存在技能的 id，否则旧的学习记录会错误地应用到新题型上。
+ * ========================================================================= */
+const STORAGE_KEY = 'mathAdventure.learning.v1';
+const SETTINGS_KEY = 'mathAdventure.settings.v1';
+
+function loadStore(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(!raw) return { version: 1, facts: {}, skills: {} };
+    const data = JSON.parse(raw);
+    if(!data || typeof data !== 'object') return { version: 1, facts: {}, skills: {} };
+    data.facts = data.facts || {};
+    data.skills = data.skills || {};
+    data.version = data.version || 1;
+    return data;
+  }catch(e){
+    return { version: 1, facts: {}, skills: {} };
+  }
+}
+function saveStore(){
+  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(store)); }catch(e){ /* storage full/unavailable: ignore */ }
+}
+let store = loadStore();
+
+function loadSettings(){
+  try{
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    if(!raw) return { speechOn: true, sfxOn: true };
+    const s = JSON.parse(raw);
+    return { speechOn: s.speechOn !== false, sfxOn: s.sfxOn !== false };
+  }catch(e){
+    return { speechOn: true, sfxOn: true };
+  }
+}
+function saveSettings(){
+  try{ localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); }catch(e){}
+}
+let settings = loadSettings();
+
+function getFactStat(key){
+  if(!store.facts[key]) store.facts[key] = { attempts: 0, wrong: 0, mastery: 30 };
+  return store.facts[key];
+}
+function getSkillStat(id){
+  if(!store.skills[id]) store.skills[id] = { attempts: 0, wrong: 0, mastery: 30 };
+  return store.skills[id];
+}
+
+/* =========================================================================
+ * 知识点 / 题型定义（Skill Definitions）—— 可独立升级的题库
+ * -------------------------------------------------------------------------
+ * 每个技能对象描述一个"知识点"：
+ *   id        稳定唯一标识（学习记录的 key，禁止复用/改名）
+ *   name      展示名称
+ *   level     难度等级（仅用于展示与排序，不影响存储）
+ *   op        运算符 '+' 或 '-'
+ *   genPool() 返回这个知识点下所有可能的具体题目 {a,b}
+ *   render()  返回题目的显示文本和朗读文本
+ *   hint()    返回答错时的提示语（小学一年级可理解的讲解）
+ *
+ * 以后要加新题型（比如"20以内连续加减""认识人民币"等），
+ * 只需要在 SKILL_DEFS 数组末尾新增一个符合以上结构的对象即可，
+ * 不需要改动已有对象，也不会破坏已经保存的学习记录。
+ * ========================================================================= */
+const SKILL_DEFS = [
+  {
+    id: 'add10', name: '10以内加法', level: 1, op: '+',
+    genPool(){
+      const pool = [];
+      for(let a = 1; a <= 9; a++){
+        for(let b = a; b <= 9; b++){
+          if(a + b <= 10) pool.push({ a, b });
+        }
+      }
+      return pool;
+    },
+    render(a, b, flip){
+      const x = flip ? b : a, y = flip ? a : b;
+      return { display: `${x} + ${y} = ?`, speak: `${x}加${y}等于多少？` };
+    },
+    hint(a, b, answer){
+      return `数一数：先数出 ${a} 个，再数出 ${b} 个，合起来一共是 ${answer} 个。`;
+    }
+  },
+  {
+    id: 'sub10', name: '10以内减法', level: 2, op: '-',
+    genPool(){
+      const pool = [];
+      for(let m = 2; m <= 10; m++){
+        for(let s = 1; s < m; s++){
+          pool.push({ a: m, b: s });
+        }
+      }
+      return pool;
+    },
+    render(a, b){
+      return { display: `${a} - ${b} = ?`, speak: `${a}减${b}等于多少？` };
+    },
+    hint(a, b, answer){
+      return `从 ${a} 个里面拿走 ${b} 个，数一数还剩几个：还剩 ${answer} 个。`;
+    }
+  },
+  {
+    id: 'add20c', name: '20以内进位加法', level: 3, op: '+',
+    genPool(){
+      const pool = [];
+      for(let a = 2; a <= 9; a++){
+        for(let b = a; b <= 9; b++){
+          if(a + b > 10 && a + b <= 18) pool.push({ a, b });
+        }
+      }
+      return pool;
+    },
+    render(a, b, flip){
+      const x = flip ? b : a, y = flip ? a : b;
+      return { display: `${x} + ${y} = ?`, speak: `${x}加${y}等于多少？` };
+    },
+    hint(a, b, answer){
+      const big = Math.max(a, b), small = Math.min(a, b);
+      const comp = 10 - big, rest = small - comp;
+      return `用凑十法：${big} 再加 ${comp} 就凑成 10，${small} 里还剩 ${rest}，10 加 ${rest} 等于 ${answer}。`;
+    }
+  },
+  {
+    id: 'sub20b', name: '20以内退位减法', level: 4, op: '-',
+    genPool(){
+      const pool = [];
+      for(let m = 11; m <= 18; m++){
+        for(let s = 2; s <= 9; s++){
+          const ones = m % 10;
+          const res = m - s;
+          if(s > ones && res >= 1 && res <= 9) pool.push({ a: m, b: s });
+        }
+      }
+      return pool;
+    },
+    render(a, b){
+      return { display: `${a} - ${b} = ?`, speak: `${a}减${b}等于多少？` };
+    },
+    hint(a, b, answer){
+      const part = 10 - b, rest = a - 10;
+      return `用破十法：把 ${a} 拆成 10 和 ${rest}，先算 10 减 ${b} 等于 ${part}，再加上 ${rest}，${part} 加 ${rest} 等于 ${answer}。`;
+    }
+  }
+];
+
+/* =========================================================================
+ * 主题（原创角色，非影视 IP）—— 每局随机切换
+ * ========================================================================= */
+const THEMES = {
+  ice: {
+    id: 'ice', title: '冰雪王国 · 数学闯关', mascot: '❄️', bodyClass: 'theme-ice',
+    decor: ['❄️','⛄','✨','🧊','⭐'],
+    greetings: ['你好，我是雪晶精灵！一起来闯关吧！', '冰雪王国的大门为你打开啦，准备好了吗？'],
+    praises: ['太厉害了，像雪花一样闪亮！', '答对啦，冰雪城堡又亮起一颗星！', '你是雪国小天才！', '真棒，雪晶精灵为你鼓掌！'],
+    encourage: ['别着急，再想一想。', '差一点点，听听提示再试试。', '没关系，慢慢数一数。']
+  },
+  toy: {
+    id: 'toy', title: '玩具冒险岛 · 数学闯关', mascot: '🧸', bodyClass: 'theme-toy',
+    decor: ['🧸','🚂','🎈','⚙️','🪀'],
+    greetings: ['嗨，我是玩具小队长！准备好出发了吗？', '玩具冒险岛欢迎你，一起来闯关！'],
+    praises: ['答对啦，获得一个闪亮齿轮！', '太棒了，玩具小队为你欢呼！', '你是玩具岛的数学高手！', '叮！过关啦，真厉害！'],
+    encourage: ['别着急，再想一想。', '差一点点，听听提示再试试。', '没关系，慢慢数一数。']
+  }
+};
+
+/* =========================================================================
+ * 工具函数
+ * ========================================================================= */
+function shuffle(arr){
+  const a = arr.slice();
+  for(let i = a.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+function pickOne(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
+function factKeyOf(skillId, a, b){ return `${skillId}:${a}:${b}`; }
+
+/* =========================================================================
+ * 自适应出题引擎
+ * ========================================================================= */
+let lastFactKey = null;
+
+function unlockedSkills(){
+  const result = [SKILL_DEFS[0]];
+  for(let i = 1; i < SKILL_DEFS.length; i++){
+    const prev = SKILL_DEFS[i - 1];
+    const prevStat = getSkillStat(prev.id);
+    if(prevStat.attempts >= 6 && prevStat.mastery >= 40){
+      result.push(SKILL_DEFS[i]);
+    } else break;
+  }
+  return result;
+}
+
+function pickSkill(){
+  const unlocked = unlockedSkills();
+  const weights = unlocked.map((skill, idx) => {
+    const stat = getSkillStat(skill.id);
+    const recencyBonus = (idx === unlocked.length - 1) ? 40 : 10;
+    return recencyBonus + Math.max(5, 100 - stat.mastery);
+  });
+  const total = weights.reduce((s, w) => s + w, 0);
+  let r = Math.random() * total;
+  for(let i = 0; i < unlocked.length; i++){
+    r -= weights[i];
+    if(r <= 0) return unlocked[i];
+  }
+  return unlocked[unlocked.length - 1];
+}
+
+function pickFact(skill){
+  const pool = skill.genPool();
+  const weights = pool.map(({ a, b }) => {
+    const key = factKeyOf(skill.id, a, b);
+    const stat = getFactStat(key);
+    let w = Math.max(5, 100 - stat.mastery) + 8;
+    if(key === lastFactKey) w *= 0.15;
+    return w;
+  });
+  const total = weights.reduce((s, w) => s + w, 0);
+  let r = Math.random() * total;
+  for(let i = 0; i < pool.length; i++){
+    r -= weights[i];
+    if(r <= 0) return pool[i];
+  }
+  return pool[pool.length - 1];
+}
+
+function buildDistractors(op, a, b, answer){
+  const cands = new Set();
+  function add(v){
+    if(Number.isInteger(v) && v >= 0 && v <= 20 && v !== answer) cands.add(v);
+  }
+  add(answer + 1); add(answer - 1); add(answer + 2); add(answer - 2);
+  if(op === '+'){
+    add((a + b) % 10);
+    add(Math.abs(a - b));
+    add(answer + 10 > 20 ? answer - 10 : answer + 10);
+  } else {
+    add(a + b);
+    add(Math.abs(b - a));
+    add(10 - b >= 0 ? 10 - b : answer + 3);
+  }
+  let arr = shuffle(Array.from(cands));
+  let guard = 0;
+  while(arr.length < 3 && guard < 40){
+    const v = answer + (Math.floor(Math.random() * 9) - 4);
+    guard++;
+    if(v >= 0 && v <= 20 && v !== answer && !arr.includes(v)) arr.push(v);
+  }
+  return arr.slice(0, 3);
+}
+
+function generateQuestion(){
+  const skill = pickSkill();
+  const { a, b } = pickFact(skill);
+  const flip = Math.random() < 0.5;
+  const answer = skill.op === '+' ? a + b : a - b;
+  const rendered = skill.render(a, b, flip);
+  const factKey = factKeyOf(skill.id, a, b);
+  lastFactKey = factKey;
+  const distractors = buildDistractors(skill.op, a, b, answer);
+  const options = shuffle([answer, ...distractors]);
+  return { skill, a, b, answer, factKey, display: rendered.display, speak: rendered.speak, options };
+}
+
+function updateStats(factKey, skillId, correct){
+  const f = getFactStat(factKey);
+  const s = getSkillStat(skillId);
+  f.attempts++; s.attempts++;
+  if(correct){
+    f.mastery = Math.min(100, f.mastery + 20);
+    s.mastery = Math.round(s.mastery * 0.8 + 100 * 0.2);
+  } else {
+    f.wrong++; s.wrong++;
+    f.mastery = Math.max(0, f.mastery - 15);
+    s.mastery = Math.round(s.mastery * 0.8 + 0 * 0.2);
+  }
+  saveStore();
+}
+
+function computeReviewCount(){
+  return Object.values(store.facts).filter(f => f.attempts >= 1 && f.mastery < 50).length;
+}
+function computeTotalAttempts(){
+  return Object.values(store.skills).reduce((s, st) => s + st.attempts, 0);
+}
+
+/* =========================================================================
+ * 语音（普通话朗读）与音效
+ * ========================================================================= */
+let voices = [];
+function loadVoices(){ voices = (window.speechSynthesis && speechSynthesis.getVoices()) || []; }
+if('speechSynthesis' in window){
+  loadVoices();
+  speechSynthesis.onvoiceschanged = loadVoices;
+}
+let lastSpokenText = '';
+function speak(text, opts){
+  opts = opts || {};
+  lastSpokenText = text;
+  if(!settings.speechOn && !opts.force) return;
+  if(!('speechSynthesis' in window)) return;
+  try{
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'zh-CN';
+    const v = voices.find(v => v.lang && v.lang.toLowerCase().startsWith('zh'));
+    if(v) u.voice = v;
+    u.rate = 0.95; u.pitch = 1.05;
+    speechSynthesis.speak(u);
+  }catch(e){ /* speech unsupported: fail silently */ }
+}
+function replayLast(){
+  if(lastSpokenText) speak(lastSpokenText, { force: true });
+}
+
+let audioCtx = null;
+function ensureCtx(){
+  if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if(audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+function playTone(freq, dur, type, delay){
+  if(!settings.sfxOn) return;
+  try{
+    const ctx = ensureCtx();
+    const t0 = ctx.currentTime + (delay || 0);
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = type || 'sine';
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0.0001, t0);
+    gain.gain.exponentialRampToValueAtTime(0.25, t0 + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.start(t0); osc.stop(t0 + dur + 0.02);
+  }catch(e){ /* audio unsupported: fail silently */ }
+}
+function sfxCorrect(){ playTone(523.25, 0.15); playTone(784, 0.18, 'sine', 0.15); }
+function sfxWrong(){ playTone(180, 0.25, 'sawtooth'); }
+
+/* =========================================================================
+ * 游戏状态与渲染
+ * ========================================================================= */
+let currentTheme = null;
+let score = 0, streak = 0, questionNum = 0;
+let state = { current: null, answered: false, firstAttemptDone: false };
+
+const el = {
+  bgDecor: document.getElementById('bgDecor'),
+  mascotEmoji: document.getElementById('mascotEmoji'),
+  themeTitle: document.getElementById('themeTitle'),
+  scoreVal: document.getElementById('scoreVal'),
+  streakVal: document.getElementById('streakVal'),
+  questionNum: document.getElementById('questionNum'),
+  levelVal: document.getElementById('levelVal'),
+  masteryFill: document.getElementById('masteryFill'),
+  reviewVal: document.getElementById('reviewVal'),
+  totalVal: document.getElementById('totalVal'),
+  questionCard: document.getElementById('questionCard'),
+  mascotLine: document.getElementById('mascotLine'),
+  equationText: document.getElementById('equationText'),
+  answersGrid: document.getElementById('answersGrid'),
+  feedbackBox: document.getElementById('feedbackBox'),
+  nextBtn: document.getElementById('nextBtn'),
+  rewardLayer: document.getElementById('rewardLayer'),
+  toggleSpeech: document.getElementById('toggleSpeech'),
+  toggleSfx: document.getElementById('toggleSfx'),
+  replayBtn: document.getElementById('replayBtn'),
+  newRoundBtn: document.getElementById('newRoundBtn'),
+  clearRecordBtn: document.getElementById('clearRecordBtn'),
+  clearConfirmModal: document.getElementById('clearConfirmModal'),
+  confirmClearBtn: document.getElementById('confirmClearBtn'),
+  cancelClearBtn: document.getElementById('cancelClearBtn')
+};
+
+function setupTheme(theme){
+  currentTheme = theme;
+  document.body.classList.remove('theme-ice', 'theme-toy');
+  document.body.classList.add(theme.bodyClass);
+  el.mascotEmoji.textContent = theme.mascot;
+  el.themeTitle.textContent = theme.title;
+  el.bgDecor.innerHTML = '';
+  for(let i = 0; i < 14; i++){
+    const span = document.createElement('span');
+    span.className = 'float-emoji';
+    span.textContent = pickOne(theme.decor);
+    span.style.left = (Math.random() * 96) + '%';
+    span.style.animationDuration = (10 + Math.random() * 14) + 's';
+    span.style.animationDelay = (Math.random() * -20) + 's';
+    span.style.fontSize = (22 + Math.random() * 22) + 'px';
+    el.bgDecor.appendChild(span);
+  }
+}
+
+function updateHeader(){
+  el.scoreVal.textContent = score;
+  el.streakVal.textContent = streak;
+  el.questionNum.textContent = questionNum;
+  const unlocked = unlockedSkills();
+  const curSkill = unlocked[unlocked.length - 1];
+  el.levelVal.textContent = `Lv.${curSkill.level} ${curSkill.name}`;
+  const curStat = getSkillStat(curSkill.id);
+  el.masteryFill.style.width = Math.max(0, Math.min(100, curStat.mastery)) + '%';
+  el.reviewVal.textContent = computeReviewCount();
+  el.totalVal.textContent = computeTotalAttempts();
+  el.toggleSpeech.classList.toggle('off', !settings.speechOn);
+  el.toggleSpeech.textContent = settings.speechOn ? '🔊' : '🔈';
+  el.toggleSfx.classList.toggle('off', !settings.sfxOn);
+}
+
+function spawnReward(){
+  const emojis = currentTheme.decor;
+  for(let i = 0; i < 10; i++){
+    const span = document.createElement('span');
+    span.className = 'particle';
+    span.textContent = pickOne(emojis);
+    span.style.left = (35 + Math.random() * 30) + '%';
+    span.style.setProperty('--dx', (Math.random() * 220 - 110) + 'px');
+    span.style.setProperty('--dur', (0.9 + Math.random() * 0.6) + 's');
+    el.rewardLayer.appendChild(span);
+    setTimeout(() => span.remove(), 1700);
+  }
+}
+
+function renderAnswers(options, state){
+  el.answersGrid.innerHTML = '';
+  options.forEach((val, idx) => {
+    const btn = document.createElement('button');
+    btn.className = 'answer-btn';
+    btn.dataset.idx = idx;
+    btn.dataset.val = val;
+    btn.innerHTML = `<span class="badge">${idx + 1}</span><span class="val">${val}</span>`;
+    btn.addEventListener('click', () => onAnswer(val, btn));
+    el.answersGrid.appendChild(btn);
+  });
+}
+
+function newQuestion(){
+  questionNum++;
+  const q = generateQuestion();
+  state = { current: q, answered: false, firstAttemptDone: false };
+  el.equationText.textContent = q.display;
+  el.feedbackBox.textContent = '';
+  el.feedbackBox.className = 'feedback';
+  el.nextBtn.disabled = true;
+  renderAnswers(q.options, state);
+  updateHeader();
+  const line = pickOne(currentTheme.greetings);
+  el.mascotLine.textContent = '';
+  speak(q.speak);
+}
+
+function onAnswer(val, btn){
+  if(!state.current || state.answered) return;
+  if(btn.classList.contains('disabled')) return;
+  const q = state.current;
+  const correct = val === q.answer;
+
+  if(!state.firstAttemptDone){
+    state.firstAttemptDone = true;
+    updateStats(q.factKey, q.skill.id, correct);
+  }
+
+  if(correct){
+    state.answered = true;
+    btn.classList.add('correct');
+    document.querySelectorAll('.answer-btn').forEach(b => b.classList.add('locked'));
+    const gained = state.hintShown ? 4 : 10;
+    score += gained;
+    streak += 1;
+    const praise = pickOne(currentTheme.praises);
+    el.feedbackBox.textContent = `✔ 答对了！${praise}（+${gained} 分）`;
+    el.feedbackBox.className = 'feedback good';
+    el.mascotLine.textContent = praise;
+    el.questionCard.classList.remove('shake');
+    el.questionCard.classList.add('pop');
+    setTimeout(() => el.questionCard.classList.remove('pop'), 500);
+    spawnReward();
+    sfxCorrect();
+    speak(`答对了！${praise}`);
+    el.nextBtn.disabled = false;
+    el.nextBtn.focus();
+  } else {
+    streak = 0;
+    btn.classList.add('wrong', 'disabled');
+    state.hintShown = true;
+    const hint = q.skill.hint(q.a, q.b, q.answer);
+    const comfort = pickOne(currentTheme.encourage);
+    el.feedbackBox.textContent = `✘ ${comfort} ${hint}`;
+    el.feedbackBox.className = 'feedback bad';
+    el.questionCard.classList.remove('pop');
+    el.questionCard.classList.add('shake');
+    setTimeout(() => el.questionCard.classList.remove('shake'), 400);
+    sfxWrong();
+    speak(`${comfort}${hint}`);
+  }
+  updateHeader();
+}
+
+function nextQuestion(){
+  if(!state.answered) return;
+  newQuestion();
+}
+
+/* =========================================================================
+ * 设置、清除记录、新一局
+ * ========================================================================= */
+function toggleSpeechSetting(){
+  settings.speechOn = !settings.speechOn;
+  saveSettings();
+  updateHeader();
+}
+function toggleSfxSetting(){
+  settings.sfxOn = !settings.sfxOn;
+  saveSettings();
+  updateHeader();
+}
+function startNewRound(){
+  score = 0; streak = 0; questionNum = 0;
+  const theme = Math.random() < 0.5 ? THEMES.ice : THEMES.toy;
+  setupTheme(theme);
+  newQuestion();
+  speak(pickOne(theme.greetings), { force: false });
+}
+function clearLearningRecord(){
+  store = { version: 1, facts: {}, skills: {} };
+  saveStore();
+  startNewRound();
+}
+
+el.toggleSpeech.addEventListener('click', toggleSpeechSetting);
+el.toggleSfx.addEventListener('click', toggleSfxSetting);
+el.replayBtn.addEventListener('click', replayLast);
+el.newRoundBtn.addEventListener('click', startNewRound);
+el.nextBtn.addEventListener('click', nextQuestion);
+el.clearRecordBtn.addEventListener('click', () => el.clearConfirmModal.classList.remove('hidden'));
+el.cancelClearBtn.addEventListener('click', () => el.clearConfirmModal.classList.add('hidden'));
+el.confirmClearBtn.addEventListener('click', () => {
+  el.clearConfirmModal.classList.add('hidden');
+  clearLearningRecord();
+});
+
+document.addEventListener('keydown', (e) => {
+  if(!el.clearConfirmModal.classList.contains('hidden')){
+    if(e.key === 'Escape') el.clearConfirmModal.classList.add('hidden');
+    return;
+  }
+  if(e.key >= '1' && e.key <= '4'){
+    const idx = Number(e.key) - 1;
+    const btn = el.answersGrid.children[idx];
+    if(btn && !btn.classList.contains('disabled') && !btn.classList.contains('locked')){
+      btn.click();
+    }
+  } else if(e.key === 'Enter'){
+    if(!el.nextBtn.disabled){ e.preventDefault(); nextQuestion(); }
+  } else if(e.code === 'Space' || e.key === ' '){
+    e.preventDefault();
+    replayLast();
+  }
+});
+
+/* =========================================================================
+ * 启动
+ * ========================================================================= */
+startNewRound();
+</script>
+</body>
+</html>
