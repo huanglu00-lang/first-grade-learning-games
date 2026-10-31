@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
-<title>认字大冒险</title>
+<title>一年级学习乐园 · 认字游戏</title>
 <style>
 :root{
   --ice1:#eaf7ff;--ice2:#cdeeff;--ice3:#9fd9ff;--deep:#2f7bd1;--navy:#1f3a5f;
@@ -162,7 +162,7 @@ body.short .bubble{display:none}
   <header class="top">
     <div class="brand">
       <span id="brandIconWrap"></span>
-      <span id="brandTitle">认字大冒险</span>
+      <span id="brandTitle">一年级学习乐园 · 认字游戏</span>
     </div>
     <div class="headerBtns">
       <button class="restart" id="restart">↻ 重新开始</button>
@@ -330,7 +330,7 @@ const THEMES={
   },
   toy:{
     key:'toy',
-    title:'玩具王国认字大冒险',
+    title:'《玩具总动员》认字游戏',
     icon:`<svg viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="8" height="8" rx="2" fill="#ff9f5a"/><rect x="13" y="3" width="8" height="8" rx="2" fill="#5bc8af"/><rect x="3" y="13" width="8" height="8" rx="2" fill="#ffd166"/><rect x="13" y="13" width="8" height="8" rx="2" fill="#ff6f91"/></svg>`,
     mascotsHTML:`
       <svg class="mascot" viewBox="0 0 68 82" aria-label="机器人伙伴">
@@ -363,7 +363,7 @@ const THEMES={
     trayIcons:['⭐','🧩'],
     confettiIcons:['⭐','🧩','🎈','✨'],
     finishEmoji:'🧸🤖⭐',
-    finishGreet:'恭喜你完成玩具王国认字大冒险！',
+    finishGreet:'恭喜你完成《玩具总动员》认字游戏！',
     flakeChar:'●',
     flakeColors:['#ff9f5a','#5bc8af','#ffd166','#ff6f91']
   }
@@ -385,7 +385,25 @@ function loadCustomWords(){ try{return JSON.parse(localStorage.getItem(CUSTOM_KE
 function saveCustomWords(){ try{localStorage.setItem(CUSTOM_KEY,JSON.stringify(customWords));}catch(e){} }
 let customWords=loadCustomWords();
 function getPool(){ return BASE_WORDS.concat(customWords); }
+const WORD_EXAMPLES={
+  '一':['一个','一天'],'二':['二月','第二'],'三':['三个','三天'],'大':['大家','大人'],'小':['小手','小鸟'],
+  '天':['天空','今天'],'地':['土地','地上'],'山':['大山','山水'],'水':['水果','喝水'],'火':['火车','火花'],
+  '土':['土地','泥土'],'云':['白云','云朵'],'雨':['下雨','雨水'],'风':['大风','风车'],'雪':['下雪','雪花'],
+  '星':['星星','星光'],'月':['月亮','月牙'],'日':['日子','生日'],'海':['大海','海边'],'河':['河水','小河'],
+  '冰':['冰雪','冰块'],'花':['花朵','红花'],'草':['小草','草地'],'树':['大树','树叶'],'叶':['叶子','树叶'],
+  '果':['水果','果子'],'瓜':['西瓜','瓜子'],'米':['大米','米饭'],'鸟':['小鸟','飞鸟'],'马':['小马','马上'],
+  '牛':['小牛','牛奶'],'羊':['小羊','山羊'],'猫':['小猫','猫咪'],'鸡':['小鸡','公鸡'],'鸭':['小鸭','鸭子'],
+  '鱼':['小鱼','鱼儿'],'狗':['小狗','狗熊'],'爸':['爸爸','爸妈'],'妈':['妈妈','爸妈'],'哥':['哥哥','大哥'],
+  '姐':['姐姐','姐妹'],'弟':['弟弟','弟妹'],'妹':['妹妹','姐妹'],'人':['大人','人们'],'家':['家人','大家'],
+  '我':['我们','我的'],'你':['你好','你们'],'他':['他们','其他'],'她':['她们','她的'],'看':['看书','看到'],
+  '听':['听见','听话'],'说':['说话','小说'],'读':['读书','朗读'],'写':['写字','书写'],'画':['画画','图画'],
+  '学':['学习','学生'],'校':['学校','校园'],'书':['书本','看书'],'字':['写字','汉字'],'好':['好看','你好'],
+  '吃':['吃饭','好吃'],'笑':['笑脸','微笑'],'爱':['爱心','可爱'],'玩':['好玩','玩具'],'哭':['哭声','哭泣'],
+  '跳':['跳舞','跳高'],'走':['走路','行走'],'跑':['跑步','快跑'],'光':['阳光','光明'],'梦':['梦想','做梦']
+};
 function exampleOf(char){
+  const choices=WORD_EXAMPLES[char];
+  if(choices&&choices.length)return choices[Math.floor(Math.random()*choices.length)];
   const hit=getPool().find(x=>x[0]===char&&x[2]);
   return hit?hit[2]:'';
 }
@@ -620,7 +638,9 @@ window.setNativeVoiceInfo=function(label,hasVoice){
   console.log('[NativeTTS] 当前使用的系统语音：',label||'(未知)');
 };
 
+let pendingSpeakTimer=null;
 function speakText(text,kind){
+  if(pendingSpeakTimer){ clearTimeout(pendingSpeakTimer); pendingSpeakTimer=null; }
   if(hasNativeTTS()){
     window.webkit.messageHandlers.speak.postMessage({type:'speak',text:text,kind:kind||'sentence'});
     return;
@@ -632,7 +652,16 @@ function speakText(text,kind){
   if(zhVoice)u.voice=zhVoice;
   speechSynthesis.speak(u);
 }
+function speakAfterChime(text,kind){
+  if(!sfxOn){ speakText(text,kind); return; }
+  if(pendingSpeakTimer)clearTimeout(pendingSpeakTimer);
+  pendingSpeakTimer=setTimeout(()=>{
+    pendingSpeakTimer=null;
+    speakText(text,kind);
+  },220);
+}
 function stopSpeaking(){
+  if(pendingSpeakTimer){ clearTimeout(pendingSpeakTimer); pendingSpeakTimer=null; }
   if(hasNativeTTS()){
     window.webkit.messageHandlers.speak.postMessage({type:'stop'});
     return;
@@ -797,7 +826,10 @@ function choose(btn){
     $('progress').style.width=((index+1)/ROUND_LEN*100)+'%';
     document.querySelectorAll('.choice').forEach(b=>b.disabled=true);
     playChime('correct');
-    speakText(`答对了，这个字是${char}`,'praise');
+    const answerExample=exampleOf(char);
+    const answerText=`答对了，这个字是${char}`+(answerExample?`，组词${answerExample}`:'');
+    $('reveal').textContent=`原来是：${char}（${py}）`+(answerExample?`　组词：${answerExample}`:'');
+    speakAfterChime(answerText,'praise');
   }else{
     btn.classList.add('wrong','dim');
     btn.disabled=true;
@@ -807,7 +839,7 @@ function choose(btn){
     $('hint').textContent= mode==='read' ? ('再想一想，看看拼音：'+py+' ～') : '再仔细听一听，点一点喇叭再听一次吧';
     $('bubble').textContent=currentTheme.wrongBubble;
     playChime('wrong');
-    speakText('再试一次','retry');
+    speakAfterChime('再试一次','retry');
     setTimeout(()=>btn.classList.remove('wrong'),400);
   }
 }
