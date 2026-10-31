@@ -112,6 +112,36 @@ body.short .bubble{display:none}
 .customChip{background:#eaf6ff;border-radius:10px;padding:4px 4px 4px 10px;font-size:13px;font-weight:700;color:var(--navy);display:flex;align-items:center;gap:4px}
 .customChip button{border:0;background:transparent;color:var(--bad);font-weight:900;cursor:pointer;font-size:15px;line-height:1;padding:2px 6px}
 .example{font-size:14px;color:#6c84a3;font-weight:700;min-height:18px;margin:0 0 6px}
+.feedbackFab{position:fixed;right:max(14px,env(safe-area-inset-right));bottom:max(14px,env(safe-area-inset-bottom));z-index:40;border:0;background:linear-gradient(135deg,var(--violet),#8f6fe0);color:#fff;font:inherit;font-weight:800;font-size:13px;padding:10px 16px;border-radius:999px;box-shadow:0 8px 20px #6b4fc255;cursor:pointer;min-height:40px}
+.feedbackFab:active{transform:scale(.96)}
+.feedbackOverlay{position:fixed;inset:0;z-index:70;background:rgba(31,58,95,.45);display:none;align-items:center;justify-content:center;padding:16px}
+.feedbackOverlay.show{display:flex}
+.feedbackPanel{background:#fff;border-radius:22px;padding:18px 18px 16px;max-width:420px;width:100%;max-height:86vh;overflow:auto;box-shadow:0 18px 40px #1f3a5f33;position:relative;text-align:left}
+.feedbackPanel h3{margin:0 0 6px;font-size:18px;color:var(--navy)}
+.feedbackSub{font-size:13px;color:#6c84a3;margin:0 0 12px;font-weight:600}
+.feedbackClose{position:absolute;top:10px;right:12px;border:0;background:#eef3fb;color:#5f759a;width:30px;height:30px;border-radius:50%;font-size:16px;font-weight:900;cursor:pointer}
+.feedbackOptions{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+.fbOption{border:2px solid #eaf0fb;background:#fff;color:var(--navy);font:inherit;font-weight:700;font-size:13px;padding:8px 14px;border-radius:14px;cursor:pointer}
+.fbOption.active{background:var(--deep);border-color:var(--deep);color:#fff}
+.feedbackMsg{width:100%;min-height:72px;border-radius:12px;border:2px solid #dcecff;padding:10px;font:inherit;font-size:14px;resize:vertical;margin-bottom:12px}
+.feedbackVoiceRow{display:flex;align-items:center;gap:10px;margin:-6px 0 12px;flex-wrap:wrap}
+.feedbackVoiceBtn{border:2px solid var(--violet);background:#fff;color:var(--violet);font:inherit;font-weight:800;font-size:14px;padding:10px 16px;border-radius:14px;cursor:pointer;min-height:44px;white-space:nowrap}
+.feedbackVoiceBtn[aria-pressed="true"]{background:var(--violet);color:#fff}
+.feedbackVoiceBtn:disabled{opacity:.5;cursor:not-allowed}
+.feedbackVoiceStatus{font-size:12px;color:#6c84a3;font-weight:600;flex:1;min-width:120px}
+.feedbackSubmit{width:100%;border:0;background:linear-gradient(135deg,var(--deep),#5a9ff0);color:#fff;font:inherit;font-weight:800;font-size:15px;padding:11px;border-radius:14px;cursor:pointer;min-height:44px}
+.feedbackThanks{min-height:18px;margin:10px 0 0;font-weight:800;font-size:13px;color:var(--ok);text-align:center}
+.feedbackHistoryLink{text-align:center;margin-top:10px}
+.feedbackLinkBtn{border:0;background:transparent;color:var(--deep);font:inherit;font-weight:700;font-size:12px;text-decoration:underline;cursor:pointer;padding:4px}
+.feedbackList{display:flex;flex-direction:column;gap:10px;margin:8px 0 10px;max-height:50vh;overflow:auto}
+.feedbackItem{background:#f6f9ff;border-radius:14px;padding:10px 12px}
+.feedbackItemHead{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.feedbackItemHead b{font-size:14px;color:var(--navy)}
+.feedbackItemHead small{font-size:11px;color:#8aa0bd}
+.feedbackItemMsg{font-size:13px;color:#405a7d;margin:6px 0 4px;white-space:pre-wrap}
+.feedbackItemMeta{font-size:11px;color:#9fb3cf}
+.feedbackEmpty{font-size:13px;color:#8aa0bd;text-align:center;padding:20px 0}
+.feedbackHistoryActions{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
 @keyframes bounce{50%{transform:scale(1.08)}}
 @keyframes shake{20%{transform:translateX(-9px)}40%{transform:translateX(8px)}60%{transform:translateX(-6px)}80%{transform:translateX(5px)}}
 .celebrate-layer{position:fixed;inset:0;z-index:50;pointer-events:none;overflow:hidden}
@@ -127,6 +157,7 @@ body.short .bubble{display:none}
 </head>
 <body class="theme-ice">
 <div id="sky" aria-hidden="true"></div>
+<button class="feedbackFab" id="feedbackFab" aria-haspopup="dialog">💬 我想说</button>
 <main class="app">
   <header class="top">
     <div class="brand">
@@ -179,6 +210,7 @@ body.short .bubble{display:none}
     <p class="pinyin" id="pinyin"></p>
     <p class="example" id="exampleText"></p>
     <button class="replay" id="replay">🔁 再听一次</button>
+    <button class="replay" id="stopSpeak" aria-label="停止朗读">⏹ 停止</button>
     <p class="reveal" id="reveal"></p>
     <div class="choices" id="choices"></div>
     <p class="hint" id="hint" aria-live="polite"></p>
@@ -197,6 +229,44 @@ body.short .bubble{display:none}
 
   <p class="source">字表来源：用户提供的识字图片（第7级总字表，仅选用清晰可辨认的字）</p>
 </main>
+
+<div class="feedbackOverlay" id="feedbackOverlay" role="dialog" aria-modal="true" aria-labelledby="feedbackTitle" aria-hidden="true">
+  <div class="feedbackPanel">
+    <button class="feedbackClose" id="feedbackClose" aria-label="关闭">×</button>
+    <h3 id="feedbackTitle">我想说</h3>
+    <p class="feedbackSub">悄悄告诉我们你的想法吧，爸爸妈妈老师会看到～</p>
+    <div class="feedbackOptions" id="feedbackOptions" role="group" aria-label="选一个想法">
+      <button class="fbOption" type="button" data-type="太难了">太难了</button>
+      <button class="fbOption" type="button" data-type="太简单了">太简单了</button>
+      <button class="fbOption" type="button" data-type="声音不好听">声音不好听</button>
+      <button class="fbOption" type="button" data-type="题目不好玩">题目不好玩</button>
+      <button class="fbOption" type="button" data-type="我想学别的">我想学别的</button>
+      <button class="fbOption" type="button" data-type="都挺好">都挺好</button>
+    </div>
+    <textarea id="feedbackMsg" class="feedbackMsg" maxlength="200" placeholder="（可以不填）想多说几句也可以写在这里～" aria-label="留言"></textarea>
+    <div class="feedbackVoiceRow">
+      <button class="feedbackVoiceBtn" id="feedbackVoiceBtn" type="button" aria-pressed="false">🎙️ 开始说</button>
+      <span class="feedbackVoiceStatus" id="feedbackVoiceStatus">也可以直接说给我听</span>
+    </div>
+    <button class="feedbackSubmit" id="feedbackSubmit" type="button">说给我听</button>
+    <p class="feedbackThanks" id="feedbackThanks" role="status"></p>
+    <div class="feedbackHistoryLink">
+      <button class="feedbackLinkBtn" id="feedbackHistoryBtn" type="button">查看/导出我说过的话</button>
+    </div>
+  </div>
+</div>
+
+<div class="feedbackOverlay" id="feedbackHistoryOverlay" role="dialog" aria-modal="true" aria-labelledby="feedbackHistoryTitle" aria-hidden="true">
+  <div class="feedbackPanel">
+    <button class="feedbackClose" id="feedbackHistoryClose" aria-label="关闭">×</button>
+    <h3 id="feedbackHistoryTitle">我说过的话</h3>
+    <div class="feedbackList" id="feedbackList"></div>
+    <div class="feedbackHistoryActions">
+      <button class="feedbackLinkBtn" id="feedbackExportBtn" type="button">导出为文件</button>
+      <button class="feedbackLinkBtn" id="feedbackClearBtn" type="button">清空记录</button>
+    </div>
+  </div>
+</div>
 <script>
 const BASE_WORDS=[
 ['一','yī'],['二','èr'],['三','sān'],['四','sì'],['五','wǔ'],['六','liù'],['七','qī'],['八','bā'],['九','jiǔ'],['十','shí'],
@@ -367,6 +437,143 @@ function updateReviewStat(){
   $('reviewCount').textContent=n;
 }
 
+// 页面版本号：写进每条反馈里，方便以后对照孩子当时用的是哪个版本
+const PAGE_VERSION='1.0.0';
+
+// 反馈功能配置：feedbackEndpoint 留空时反馈只保存在这台设备本地（localStorage），不联网、不需要任何后端。
+// 如果以后有了自己的收集服务，把 HTTPS 地址填进来，新反馈会尝试 POST 过去；
+// 没填地址、或者网络请求失败时，反馈仍然留在本机不会丢失，下次打开页面/网络恢复会自动重试。
+// 这里不会，也不应该写任何 API Key。
+const CONFIG={
+  feedbackEndpoint:'' // 例如 'https://example.com/api/feedback'，必须是 https；目前没有现成后端
+};
+
+const FEEDBACK_KEY='hanziGameFeedback_v1';
+function loadFeedback(){ try{return JSON.parse(localStorage.getItem(FEEDBACK_KEY))||[];}catch(e){return [];} }
+function saveFeedbackList(){ try{localStorage.setItem(FEEDBACK_KEY,JSON.stringify(feedbackList));}catch(e){} }
+let feedbackList=loadFeedback();
+let selectedFeedbackType=null;
+let feedbackRecognition=null;
+let feedbackListening=false;
+function setupFeedbackVoice(){
+  const btn=$('feedbackVoiceBtn'), status=$('feedbackVoiceStatus');
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){btn.disabled=true; status.textContent='当前浏览器不支持语音输入，可以直接打字'; return;}
+  const rec=new SR(); rec.lang='zh-CN'; rec.continuous=false; rec.interimResults=true;
+  rec.onstart=()=>{feedbackListening=true;btn.textContent='⏹️ 说完请点停止';btn.setAttribute('aria-pressed','true');btn.classList.add('listening');status.textContent='正在听，请自然地说…';};
+  rec.onresult=e=>{let text='';for(let i=e.resultIndex;i<e.results.length;i++)text+=e.results[i][0].transcript; if(text){const box=$('feedbackMsg');box.value=(box.value?box.value+' ':'')+text.slice(0,200-box.value.length);}};
+  rec.onerror=e=>{feedbackListening=false;btn.textContent='🎙️ 开始说';btn.setAttribute('aria-pressed','false');btn.classList.remove('listening');status.textContent=e.error==='not-allowed'?'麦克风权限未打开，可以直接打字':'没有听清，再试一次或直接打字';};
+  rec.onend=()=>{feedbackListening=false;btn.textContent='🎙️ 开始说';btn.setAttribute('aria-pressed','false');btn.classList.remove('listening');if(status.textContent==='正在听，请自然地说…')status.textContent='听到了，可以继续补充';};
+  btn.onclick=()=>{if(feedbackListening)rec.stop();else{status.textContent='准备听你说…';try{rec.start();}catch(e){status.textContent='请稍等再试，也可以直接打字';}}};
+}
+
+function currentQuestionInfo(){
+  try{
+    if(deck&&deck[index])return {char:deck[index][0],pinyin:deck[index][1]};
+  }catch(e){}
+  return {char:null,pinyin:null};
+}
+function escapeHtml(s){
+  return (s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function openFeedback(){
+  selectedFeedbackType=null;
+  document.querySelectorAll('.fbOption').forEach(b=>b.classList.remove('active'));
+  $('feedbackMsg').value='';
+  $('feedbackThanks').textContent='';
+  $('feedbackOverlay').classList.add('show');
+  $('feedbackOverlay').setAttribute('aria-hidden','false');
+}
+function closeFeedback(){
+  $('feedbackOverlay').classList.remove('show');
+  $('feedbackOverlay').setAttribute('aria-hidden','true');
+}
+function openFeedbackHistory(){
+  renderFeedbackHistory();
+  $('feedbackHistoryOverlay').classList.add('show');
+  $('feedbackHistoryOverlay').setAttribute('aria-hidden','false');
+}
+function closeFeedbackHistory(){
+  $('feedbackHistoryOverlay').classList.remove('show');
+  $('feedbackHistoryOverlay').setAttribute('aria-hidden','true');
+}
+function submitFeedback(){
+  const msg=$('feedbackMsg').value.trim().slice(0,200);
+  if(!selectedFeedbackType&&!msg){
+    $('feedbackThanks').textContent='选一个想法，或者写几句话吧～';
+    return;
+  }
+  const q=currentQuestionInfo();
+  const entry={
+    id:Date.now()+'-'+Math.random().toString(36).slice(2,8),
+    time:new Date().toISOString(),
+    type:selectedFeedbackType||'',
+    message:msg,
+    char:q.char,
+    pinyin:q.pinyin,
+    theme:currentTheme?currentTheme.key:'',
+    mode:mode,
+    pageVersion:PAGE_VERSION,
+    synced:false
+  };
+  feedbackList.push(entry);
+  saveFeedbackList();
+  $('feedbackThanks').textContent='谢谢你，我记下了 💛';
+  trySyncFeedback();
+  setTimeout(closeFeedback,1200);
+}
+function trySyncFeedback(){
+  const endpoint=CONFIG.feedbackEndpoint;
+  if(!endpoint||!/^https:\/\//i.test(endpoint))return;
+  const pending=feedbackList.filter(f=>!f.synced);
+  if(!pending.length)return;
+  pending.forEach(entry=>{
+    fetch(endpoint,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(entry)
+    }).then(res=>{
+      if(res&&res.ok){
+        entry.synced=true;
+        saveFeedbackList();
+      }
+    }).catch(()=>{ /* 网络失败，留在待同步队列里，下次打开页面或网络恢复时再试 */ });
+  });
+}
+function renderFeedbackHistory(){
+  const box=$('feedbackList');
+  if(!feedbackList.length){ box.innerHTML='<p class="feedbackEmpty">还没有留言记录～</p>'; return; }
+  box.innerHTML=feedbackList.slice().reverse().map(f=>{
+    const d=new Date(f.time);
+    const timeStr=isNaN(d)?f.time:d.toLocaleString('zh-CN');
+    const q=f.char?`当时在学「${f.char}」${f.pinyin||''}　`:'';
+    const syncLabel=CONFIG.feedbackEndpoint?(f.synced?'已同步':'待同步'):'仅保存在本机';
+    return `<div class="feedbackItem">
+      <div class="feedbackItemHead"><b>${escapeHtml(f.type)||'（只写了留言）'}</b><small>${timeStr}</small></div>
+      ${f.message?`<p class="feedbackItemMsg">${escapeHtml(f.message)}</p>`:''}
+      <small class="feedbackItemMeta">${q}版本 ${f.pageVersion} · ${syncLabel}</small>
+    </div>`;
+  }).join('');
+}
+function exportFeedback(){
+  const blob=new Blob([JSON.stringify(feedbackList,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download='认字游戏反馈_'+new Date().toISOString().slice(0,10)+'.json';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+
+// 原生桥接：由 Swift/WKWebView 注入 window.webkit.messageHandlers.speak。
+// 有原生桥接时优先用它播放（系统 zh-CN 语音，非浏览器 SpeechSynthesis），
+// 没有桥接（比如直接用浏览器打开本页）时回退到网页 SpeechSynthesis。
+function hasNativeTTS(){
+  return !!(window.webkit&&window.webkit.messageHandlers&&window.webkit.messageHandlers.speak);
+}
+
 function pickVoice(){
   if(!('speechSynthesis'in window))return null;
   const voices=speechSynthesis.getVoices();
@@ -380,6 +587,7 @@ function pickVoice(){
   return v;
 }
 function updateVoiceWarning(){
+  if(hasNativeTTS())return; // 原生语音状态由 setNativeVoiceInfo 单独汇报
   const banner=$('voiceWarning');
   if(!('speechSynthesis'in window)){
     banner.textContent='⚠️ 这个浏览器不支持语音朗读，请换用最新版 Safari 或 Chrome 打开。';
@@ -399,7 +607,24 @@ if('speechSynthesis'in window){
   updateVoiceWarning();
 }
 
-function speakText(text){
+// 由 Swift 在找到（或没找到）系统中文语音后调用，汇报的是实际选中的 voice 名称，
+// 不假定系统一定装了"播音腔"级别的语音。
+window.setNativeVoiceInfo=function(label,hasVoice){
+  const banner=$('voiceWarning');
+  if(!hasVoice){
+    banner.textContent='⚠️ 本机没有找到可用的中文语音，请到系统设置→辅助功能→朗读内容 中下载"中文（普通话，中国大陆）"语音；如需稳定的在线高品质发音，需要接入后端 TTS 服务（见下方说明）。';
+    banner.classList.add('show');
+  }else{
+    banner.classList.remove('show');
+  }
+  console.log('[NativeTTS] 当前使用的系统语音：',label||'(未知)');
+};
+
+function speakText(text,kind){
+  if(hasNativeTTS()){
+    window.webkit.messageHandlers.speak.postMessage({type:'speak',text:text,kind:kind||'sentence'});
+    return;
+  }
   if(!('speechSynthesis'in window))return;
   speechSynthesis.cancel();
   const u=new SpeechSynthesisUtterance(text);
@@ -407,7 +632,14 @@ function speakText(text){
   if(zhVoice)u.voice=zhVoice;
   speechSynthesis.speak(u);
 }
-function speakChar(){ speakText(deck[index][0]); }
+function stopSpeaking(){
+  if(hasNativeTTS()){
+    window.webkit.messageHandlers.speak.postMessage({type:'stop'});
+    return;
+  }
+  if('speechSynthesis'in window)speechSynthesis.cancel();
+}
+function speakChar(){ speakText(deck[index][0],'char'); }
 
 function playChime(type){
   if(!sfxOn)return;
@@ -565,7 +797,7 @@ function choose(btn){
     $('progress').style.width=((index+1)/ROUND_LEN*100)+'%';
     document.querySelectorAll('.choice').forEach(b=>b.disabled=true);
     playChime('correct');
-    speakText(`答对了，这个字是${char}`);
+    speakText(`答对了，这个字是${char}`,'praise');
   }else{
     btn.classList.add('wrong','dim');
     btn.disabled=true;
@@ -575,7 +807,7 @@ function choose(btn){
     $('hint').textContent= mode==='read' ? ('再想一想，看看拼音：'+py+' ～') : '再仔细听一听，点一点喇叭再听一次吧';
     $('bubble').textContent=currentTheme.wrongBubble;
     playChime('wrong');
-    speakText('再试一次');
+    speakText('再试一次','retry');
     setTimeout(()=>btn.classList.remove('wrong'),400);
   }
 }
@@ -592,7 +824,7 @@ function next(){
     $('finalCrystals').innerHTML=$('crystals').innerHTML;
     $('finishEmoji').textContent=currentTheme.finishEmoji;
     $('bubble').textContent=currentTheme.finishGreet+' 🎉';
-    speakText(currentTheme.finishGreet);
+    speakText(currentTheme.finishGreet,'finish');
     celebrate();
     return;
   }
@@ -601,6 +833,7 @@ function next(){
 $('target').onclick=speakChar;
 $('target').onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();speakChar();}};
 $('replay').onclick=speakChar;
+$('stopSpeak').onclick=stopSpeaking;
 $('next').onclick=next;
 $('restart').onclick=start;
 $('again').onclick=start;
@@ -631,6 +864,29 @@ $('addWordBtn').onclick=()=>{
   }
 };
 renderCustomList();
+$('feedbackFab').onclick=openFeedback;
+$('feedbackClose').onclick=closeFeedback;
+$('feedbackOverlay').onclick=e=>{ if(e.target.id==='feedbackOverlay')closeFeedback(); };
+document.querySelectorAll('.fbOption').forEach(b=>{
+  b.onclick=()=>{
+    document.querySelectorAll('.fbOption').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    selectedFeedbackType=b.dataset.type;
+  };
+});
+$('feedbackSubmit').onclick=submitFeedback;
+setupFeedbackVoice();
+$('feedbackHistoryBtn').onclick=()=>{ closeFeedback(); openFeedbackHistory(); };
+$('feedbackHistoryClose').onclick=closeFeedbackHistory;
+$('feedbackHistoryOverlay').onclick=e=>{ if(e.target.id==='feedbackHistoryOverlay')closeFeedbackHistory(); };
+$('feedbackExportBtn').onclick=exportFeedback;
+$('feedbackClearBtn').onclick=()=>{
+  if(confirm('确定要清空保存在这台电脑上的留言记录吗？')){
+    feedbackList=[];
+    saveFeedbackList();
+    renderFeedbackHistory();
+  }
+};
 $('sfxToggle').onclick=()=>{
   sfxOn=!sfxOn;
   $('sfxToggle').textContent=sfxOn?'🔔 音效':'🔕 音效';
@@ -643,6 +899,13 @@ function adjustForWindowHeight(){
 window.addEventListener('resize',adjustForWindowHeight);
 adjustForWindowHeight();
 document.addEventListener('keydown',e=>{
+  const typing=e.target&&(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA');
+  const feedbackOpen=$('feedbackOverlay').classList.contains('show')||$('feedbackHistoryOverlay').classList.contains('show');
+  if(feedbackOpen){
+    if(e.key==='Escape'){ e.preventDefault(); closeFeedback(); closeFeedbackHistory(); }
+    return;
+  }
+  if(typing)return;
   if($('finish').classList.contains('show'))return;
   if(e.key>='1'&&e.key<='4'){
     const btns=[...document.querySelectorAll('.choice')];
@@ -652,10 +915,14 @@ document.addEventListener('keydown',e=>{
     if($('next').classList.contains('show')){e.preventDefault();next();}
   }else if(e.key===' '||e.code==='Space'){
     e.preventDefault();speakChar();
+  }else if(e.key==='Escape'){
+    e.preventDefault();stopSpeaking();
   }
 });
 updateReviewStat();
 start();
+trySyncFeedback();
+window.addEventListener('online',trySyncFeedback);
 
 /* Touch Bar 原生按钮桥接：由 WKWebView.evaluateJavaScript 调用，不影响鼠标/键盘原有玩法 */
 window.TouchBar={
