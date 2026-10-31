@@ -683,11 +683,13 @@ function advanceDemo(){
   if(state.demoStep <= 1 + V1){
     const i = state.demoStep - 1; // 第几块中间物品，1..V1
     const soFar = i * V2;
+    const remaining = V1 - i;
+    const remainGroup = remaining > 0 ? `<span class="exch-group">${repeatEmoji(midItem.emoji, remaining)}</span>` : '';
     area.innerHTML = `
-      <div class="exch-demo-step"><span class="exch-group">${repeatEmoji(midItem.emoji, 1)}</span><span class="exch-arrow">→</span><span class="exch-group">${repeatEmoji(toItem.emoji, V2)}</span></div>
-      <div class="exch-demo-step">现在一共有：<span class="exch-group">${repeatEmoji(toItem.emoji, soFar)}</span></div>
+      <div class="exch-demo-step">已经换出：<span class="exch-group">${repeatEmoji(toItem.emoji, soFar)}</span></div>
+      <div class="exch-demo-step">第${i}个${midItem.name}换成<span class="exch-group">${repeatEmoji(toItem.emoji, V2)}</span>，还剩${remainGroup}${remaining}个${midItem.name}</div>
     `;
-    speak(`再把第${i}个${midItem.name}换成${V2}个${toItem.name}，现在一共有${soFar}个${toItem.name}。`);
+    speak(`第${i}个${midItem.name}换成${V2}个${toItem.name}，还剩${remaining}个${midItem.name}。现在已经换出${soFar}个${toItem.name}。`);
     btn.textContent = i < V1 ? '👉 下一块' : '👉 数一数';
     return;
   }
