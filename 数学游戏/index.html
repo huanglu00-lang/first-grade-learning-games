@@ -716,10 +716,10 @@ function repeatEmoji(emoji, count){
 function renderConditionsHtml(q){
   let html = '<div class="exch-conditions">';
   q.conditions.forEach(c => {
-    html += `<div class="exch-row"><span class="exch-group">${repeatEmoji(c.fromItem.emoji, c.fromCount)}</span><span class="exch-eq">=</span><span class="exch-group">${repeatEmoji(c.toItem.emoji, c.toCount)}</span></div>`;
+    html += `<div class="exch-row"><span class="exch-group">${repeatEmoji(c.fromItem.emoji, c.fromCount)}</span><span class="exch-eq">=</span><span class="exch-group">${repeatEmoji(c.toItem.emoji, c.toCount)}</span><span class="exch-count-label">${c.fromCount}个${c.fromItem.name} = ${c.toCount}个${c.toItem.name}</span></div>`;
   });
   html += '</div>';
-  html += `<div class="exch-question"><span class="exch-group">${repeatEmoji(q.fromItem.emoji, q.N0)}</span><span class="exch-eq">=</span><span class="exch-group exch-unknown">？${q.toItem.emoji}</span></div>`;
+  html += `<div class="exch-question"><span class="exch-group">${repeatEmoji(q.fromItem.emoji, q.N0)}</span><span class="exch-eq">=</span><span class="exch-group exch-unknown">？${q.toItem.emoji}</span><span class="exch-count-label">${q.N0}个${q.fromItem.name}能换几个${q.toItem.name}？</span></div>`;
   return html;
 }
 
