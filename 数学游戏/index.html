@@ -218,13 +218,59 @@
     transition: transform .15s ease;
   }
   .demo-btn:hover{ transform: translateY(-2px); }
-  .exch-demo-area{ min-height: 44px; margin-bottom: 6px; }
   .exch-demo-step{
     display:flex; align-items:center; justify-content:center; gap:10px; flex-wrap:wrap;
     font-size:15px; color:#2b4a63; animation: popCard 0.4s;
   }
   .exch-demo-step.final{ font-size:16px; font-weight:700; color:#2f9e4f; }
   .answer-btn .unit-emoji{ font-size:0.6em; margin-left:4px; }
+
+  /* 分步演示模态弹窗：居中 overlay + dialog，内容区可滚动，底部控制固定 */
+  .exch-modal-box{
+    background:#fff; border-radius:20px;
+    width:min(560px, 94vw);
+    max-height:90vh; max-height:90dvh;
+    display:flex; flex-direction:column;
+    box-shadow: 0 16px 40px rgba(0,0,0,0.35);
+    overflow:hidden; text-align:left;
+    animation: modalPop .22s ease-out;
+  }
+  @keyframes modalPop{ from{ opacity:0; transform:scale(.92); } to{ opacity:1; transform:scale(1); } }
+  .exch-modal-header{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:14px 18px 8px; flex-shrink:0;
+  }
+  .exch-modal-header h2{ font-size:17px; margin:0; color:#2b4a63; }
+  .exch-modal-close{
+    border:none; background:#f1f1f1; border-radius:50%; width:44px; height:44px;
+    font-size:16px; cursor:pointer; flex-shrink:0;
+  }
+  .exch-modal-scroll{
+    flex:1 1 auto; overflow-y:auto; -webkit-overflow-scrolling:touch;
+    padding:4px 18px 10px;
+  }
+  .exch-modal-conditions{ margin-bottom:10px; }
+  .exch-modal-footer{
+    display:flex; gap:8px; flex-wrap:wrap; justify-content:center;
+    padding:10px 14px calc(10px + env(safe-area-inset-bottom));
+    border-top:1px solid #eee; flex-shrink:0; background:#fff;
+  }
+  .exch-modal-footer button{
+    min-height:44px; min-width:44px; padding:8px 14px; border-radius:14px;
+    border:none; font-size:14px; font-weight:700; cursor:pointer;
+  }
+  #exchPrevBtn, #exchNextBtn{ background:#5aa9e6; color:#fff; }
+  #exchRepeatBtn{ background:#ffd36e; color:#5a3b00; }
+  #exchCloseBtn{ background:#eee; color:#333; }
+  .exch-modal-footer button:disabled{ opacity:.4; cursor:not-allowed; }
+
+  .exch-step-card{ border:2px solid #d9e6f2; border-radius:16px; padding:12px; margin:8px 0; }
+  .exch-step-title{ font-weight:800; color:#2b4a63; margin-bottom:8px; font-size:15px; }
+  .exch-step-card.final{ border-color:#3fae5a; background:#f3fbf4; }
+  .exch-amount-done{ }
+  .exch-amount-current{ }
+  .exch-amount-remain{ color:#5a7184; font-weight:700; }
+  .exch-answer-line{ font-size:19px; font-weight:800; color:#2f9e4f; margin-top:8px; }
 
   .exch-group .emo.numbered{ position:relative; display:inline-block; opacity:0; animation: popIn .25s ease-out both; }
   .exch-group .emo.numbered .num{
@@ -281,7 +327,15 @@
     .exch-row, .exch-question{ padding:4px 7px; }
     .exch-demo-controls{ margin: 6px 0; }
     .demo-btn{ padding:6px 14px; font-size:13px; }
-    .exch-demo-area{ min-height: 0; margin-bottom:4px; }
+    .exch-modal-box{ width:96vw; border-radius:16px; }
+    .exch-modal-header{ padding:10px 12px 6px; }
+    .exch-modal-header h2{ font-size:14px; }
+    .exch-modal-scroll{ padding:4px 10px 8px; }
+    .exch-modal-footer{ gap:6px; padding:8px 8px calc(8px + env(safe-area-inset-bottom)); }
+    .exch-modal-footer button{ font-size:12px; padding:8px 10px; }
+    .exch-step-card{ padding:8px; margin:6px 0; }
+    .exch-step-title{ font-size:13px; }
+    .exch-answer-line{ font-size:16px; }
     .answers{ gap:8px; margin-bottom:8px; }
     .answer-btn{ padding:10px 6px; font-size:19px; }
     .feedback{ min-height:28px; font-size:12px; margin:4px auto 8px; }
@@ -295,6 +349,7 @@
     .particle{ animation: none; opacity: 0; }
     .exch-demo-step{ animation: none; }
     .exch-group .emo.numbered{ animation: none; opacity: 1; }
+    .exch-modal-box{ animation: none; }
   }
 </style>
 </head>
@@ -355,6 +410,25 @@
     <div class="modal-actions">
       <button class="danger" id="confirmClearBtn">确定清除</button>
       <button id="cancelClearBtn">取消</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal hidden" id="exchDemoModal" role="dialog" aria-modal="true" aria-labelledby="exchModalTitle">
+  <div class="exch-modal-box" id="exchModalBox">
+    <div class="exch-modal-header">
+      <h2 id="exchModalTitle">🔍 看看怎么换</h2>
+      <button class="exch-modal-close" id="exchModalCloseX" aria-label="关闭" title="关闭">✕</button>
+    </div>
+    <div class="exch-modal-scroll" id="exchModalScroll">
+      <div class="exch-modal-conditions" id="exchModalConditions"></div>
+      <div id="exchModalStepArea"></div>
+    </div>
+    <div class="exch-modal-footer">
+      <button id="exchPrevBtn">⬅ 上一步</button>
+      <button id="exchNextBtn">下一步 👉</button>
+      <button id="exchRepeatBtn">🔁 再看一次</button>
+      <button id="exchCloseBtn">✖ 关闭</button>
     </div>
   </div>
 </div>
@@ -639,17 +713,21 @@ function repeatEmoji(emoji, count){
   return s;
 }
 
-function renderExchangeBoard(q){
+function renderConditionsHtml(q){
   let html = '<div class="exch-conditions">';
   q.conditions.forEach(c => {
     html += `<div class="exch-row"><span class="exch-group">${repeatEmoji(c.fromItem.emoji, c.fromCount)}</span><span class="exch-eq">=</span><span class="exch-group">${repeatEmoji(c.toItem.emoji, c.toCount)}</span></div>`;
   });
   html += '</div>';
   html += `<div class="exch-question"><span class="exch-group">${repeatEmoji(q.fromItem.emoji, q.N0)}</span><span class="exch-eq">=</span><span class="exch-group exch-unknown">？${q.toItem.emoji}</span></div>`;
+  return html;
+}
+
+function renderExchangeBoard(q){
+  let html = renderConditionsHtml(q);
   html += `<div class="exch-demo-controls"><button class="demo-btn" id="exchDemoBtn">🔍 看看怎么换</button></div>`;
-  html += `<div class="exch-demo-area" id="exchDemoArea"></div>`;
   el.exchangeBoard.innerHTML = html;
-  document.getElementById('exchDemoBtn').addEventListener('click', advanceDemo);
+  document.getElementById('exchDemoBtn').addEventListener('click', openExchDemoModal);
 }
 
 function numberedEmoji(emoji, count){
@@ -660,44 +738,89 @@ function numberedEmoji(emoji, count){
   return s;
 }
 
-function advanceDemo(){
+/* =========================================================================
+ * 分步演示模态弹窗（居中 overlay + dialog）
+ * -------------------------------------------------------------------------
+ * 固定两步换算：第1步"1个起始物品 → V1个中间物品"（左边恒1，不逐个拆）；
+ * 第2步"中间物品一个一个换成最终物品"，拆成 V1 张卡片，每张卡片突出显示
+ * 已经换出/正在换/还剩的数量；最后一步把全部最终物品逐个数一数（配数字
+ * 小标签）并醒目显示答案。步数 = 1 + V1 + 1，用上一步/下一步导航，
+ * 全程不出现乘法符号或抽象字母。
+ * ========================================================================= */
+function totalExchSteps(q){
+  return 1 + q.conditions[0].toCount + 1;
+}
+
+function renderExchModalStep(stepIdx){
   const q = state.current;
   if(!q || q.type !== 'exchange') return;
-  // 固定两步：第 1 步"1个起始物品 → V1个中间物品"（左边恒1，不用逐个拆）；
-  // 第 2 步"中间物品一个一个换成最终物品"，拆成 V1 个小步，每步换出V2个，
-  // 最后一步把全部最终物品"逐个数一数"（配数字小标签），全程不出现乘法。
   const fromItem = q.itemsChain[0], midItem = q.itemsChain[1], toItem = q.itemsChain[2];
   const V1 = q.conditions[0].toCount, V2 = q.conditions[1].toCount;
-  state.demoStep = (state.demoStep || 0) + 1;
+  const total = totalExchSteps(q);
+  stepIdx = Math.max(1, Math.min(total, stepIdx));
+  state.demoStep = stepIdx;
   state.hintShown = true;
-  const area = document.getElementById('exchDemoArea');
-  const btn = document.getElementById('exchDemoBtn');
-  if(!area || !btn) return;
 
-  if(state.demoStep === 1){
-    area.innerHTML = `<div class="exch-demo-step"><span class="exch-group">${repeatEmoji(fromItem.emoji, 1)}</span><span class="exch-arrow">→</span><span class="exch-group">${repeatEmoji(midItem.emoji, V1)}</span></div>`;
-    speak(`先把1个${fromItem.name}换成${V1}个${midItem.name}。`);
-    btn.textContent = '👉 下一步';
-    return;
-  }
-  if(state.demoStep <= 1 + V1){
-    const i = state.demoStep - 1; // 第几块中间物品，1..V1
+  let html, speakText;
+  if(stepIdx === 1){
+    html = `<div class="exch-step-card">
+      <div class="exch-step-title">第1步：1个${fromItem.name}换成${V1}个${midItem.name}</div>
+      <div class="exch-demo-step"><span class="exch-group">${repeatEmoji(fromItem.emoji, 1)}</span><span class="exch-arrow">→</span><span class="exch-group">${repeatEmoji(midItem.emoji, V1)}</span></div>
+    </div>`;
+    speakText = `第1步：1个${fromItem.name}换成${V1}个${midItem.name}。`;
+  } else if(stepIdx <= 1 + V1){
+    const i = stepIdx - 1; // 第几个中间物品，1..V1
     const soFar = i * V2;
     const remaining = V1 - i;
     const remainGroup = remaining > 0 ? `<span class="exch-group">${repeatEmoji(midItem.emoji, remaining)}</span>` : '';
-    area.innerHTML = `
-      <div class="exch-demo-step">已经换出：<span class="exch-group">${repeatEmoji(toItem.emoji, soFar)}</span></div>
-      <div class="exch-demo-step">第${i}个${midItem.name}换成<span class="exch-group">${repeatEmoji(toItem.emoji, V2)}</span>，还剩${remainGroup}${remaining}个${midItem.name}</div>
-    `;
-    speak(`第${i}个${midItem.name}换成${V2}个${toItem.name}，还剩${remaining}个${midItem.name}。现在已经换出${soFar}个${toItem.name}。`);
-    btn.textContent = i < V1 ? '👉 下一块' : '👉 数一数';
-    return;
+    html = `<div class="exch-step-card">
+      <div class="exch-step-title">第2步：第${i}个${midItem.name}换成${V2}个${toItem.name}</div>
+      <div class="exch-demo-step">已经换出：<span class="exch-group exch-amount-done">${repeatEmoji(toItem.emoji, soFar)}</span></div>
+      <div class="exch-demo-step">正在换：第${i}个${midItem.name}<span class="exch-arrow">→</span><span class="exch-group exch-amount-current">${repeatEmoji(toItem.emoji, V2)}</span></div>
+      <div class="exch-demo-step">还剩：${remainGroup}<span class="exch-amount-remain">${remaining}个${midItem.name}</span></div>
+    </div>`;
+    speakText = `第${i}个${midItem.name}换成${V2}个${toItem.name}，还剩${remaining}个${midItem.name}。现在已经换出${soFar}个${toItem.name}。`;
+  } else {
+    const countWords = Array.from({ length: q.answer }, (_, i) => i + 1).join('、');
+    html = `<div class="exch-step-card final">
+      <div class="exch-step-title">数一数，一共有几个${toItem.name}</div>
+      <div class="exch-demo-step"><span class="exch-group">${numberedEmoji(toItem.emoji, q.answer)}</span></div>
+      <div class="exch-demo-step">${countWords}</div>
+      <div class="exch-answer-line">答案：${q.answer}个${toItem.name}</div>
+    </div>`;
+    speakText = `${countWords}，答案是${q.answer}个${toItem.name}。`;
   }
-  const countWords = Array.from({ length: q.answer }, (_, i) => i + 1).join('、');
-  area.innerHTML = `<div class="exch-demo-step final"><span class="exch-group">${numberedEmoji(toItem.emoji, q.answer)}</span><br>${countWords}，一共有 <b>${q.answer}</b> 个 ${q.toItem.name}</div>`;
-  speak(`${countWords}，一共有${q.answer}个${q.toItem.name}。`);
-  btn.textContent = '🔁 再看一次';
+  el.exchModalStepArea.innerHTML = html;
+  speak(speakText);
+  el.exchPrevBtn.disabled = stepIdx <= 1;
+  el.exchNextBtn.disabled = stepIdx >= total;
+}
+
+function openExchDemoModal(){
+  const q = state.current;
+  if(!q || q.type !== 'exchange') return;
+  el.exchModalConditions.innerHTML = renderConditionsHtml(q);
+  el.exchDemoModal.classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+  renderExchModalStep(1);
+}
+function closeExchDemoModal(){
+  if(el.exchDemoModal.classList.contains('hidden')) return;
+  el.exchDemoModal.classList.add('hidden');
+  document.body.style.overflow = '';
   state.demoStep = 0;
+  if('speechSynthesis' in window) speechSynthesis.cancel();
+}
+function exchModalNext(){
+  const q = state.current;
+  if(!q) return;
+  renderExchModalStep((state.demoStep || 1) + 1);
+}
+function exchModalPrev(){
+  renderExchModalStep((state.demoStep || 1) - 1);
+}
+function exchModalRepeat(){
+  renderExchModalStep(1);
 }
 
 /* =========================================================================
@@ -942,7 +1065,15 @@ const el = {
   clearRecordBtn: document.getElementById('clearRecordBtn'),
   clearConfirmModal: document.getElementById('clearConfirmModal'),
   confirmClearBtn: document.getElementById('confirmClearBtn'),
-  cancelClearBtn: document.getElementById('cancelClearBtn')
+  cancelClearBtn: document.getElementById('cancelClearBtn'),
+  exchDemoModal: document.getElementById('exchDemoModal'),
+  exchModalConditions: document.getElementById('exchModalConditions'),
+  exchModalStepArea: document.getElementById('exchModalStepArea'),
+  exchModalCloseX: document.getElementById('exchModalCloseX'),
+  exchPrevBtn: document.getElementById('exchPrevBtn'),
+  exchNextBtn: document.getElementById('exchNextBtn'),
+  exchRepeatBtn: document.getElementById('exchRepeatBtn'),
+  exchCloseBtn: document.getElementById('exchCloseBtn')
 };
 
 function setupTheme(theme){
@@ -1132,7 +1263,20 @@ el.confirmClearBtn.addEventListener('click', () => {
   clearLearningRecord();
 });
 
+el.exchPrevBtn.addEventListener('click', exchModalPrev);
+el.exchNextBtn.addEventListener('click', exchModalNext);
+el.exchRepeatBtn.addEventListener('click', exchModalRepeat);
+el.exchCloseBtn.addEventListener('click', closeExchDemoModal);
+el.exchModalCloseX.addEventListener('click', closeExchDemoModal);
+el.exchDemoModal.addEventListener('click', (e) => {
+  if(e.target === el.exchDemoModal) closeExchDemoModal();
+});
+
 document.addEventListener('keydown', (e) => {
+  if(!el.exchDemoModal.classList.contains('hidden')){
+    if(e.key === 'Escape') closeExchDemoModal();
+    return;
+  }
   if(!el.clearConfirmModal.classList.contains('hidden')){
     if(e.key === 'Escape') el.clearConfirmModal.classList.add('hidden');
     return;
