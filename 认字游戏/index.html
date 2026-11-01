@@ -30,7 +30,7 @@ body.theme-toy{
 .brand{display:flex;align-items:center;gap:8px;font-size:clamp(18px,5vw,26px);font-weight:900;letter-spacing:.5px;color:var(--deep)}
 .brand svg{width:32px;height:32px;flex:none}
 .headerBtns{display:flex;gap:8px;flex-wrap:wrap}
-.restart{border:0;background:#fff;color:var(--deep);font-weight:800;font-size:13px;padding:7px 12px;border-radius:12px;box-shadow:0 4px 14px #2f7bd133;cursor:pointer;min-height:36px}
+.restart{border:0;background:#fff;color:var(--deep);font-weight:800;font-size:13px;padding:7px 12px;border-radius:12px;box-shadow:0 4px 14px #2f7bd133;cursor:pointer;min-height:36px;text-decoration:none;display:inline-flex;align-items:center}
 .restart:active{transform:scale(.96)}
 .mascots{display:flex;justify-content:center;gap:14px;margin:0 0 4px}
 .mascot{width:44px;height:53px}
@@ -165,6 +165,7 @@ body.short .bubble{display:none}
       <span id="brandTitle">一年级学习乐园 · 认字游戏</span>
     </div>
     <div class="headerBtns">
+      <a class="restart" href="../" aria-label="返回一年级学习乐园入口">⌂ 学习入口</a>
       <button class="restart" id="restart">↻ 重新开始</button>
       <button class="restart" id="toggleImport" aria-expanded="false">➕ 添加生字</button>
       <button class="restart" id="clearMastery" title="清除本机保存的错题记录">🧹 清除记录</button>
@@ -178,6 +179,7 @@ body.short .bubble{display:none}
     <div class="segmented" role="group" aria-label="选择认字模式">
       <button class="segBtn active" id="modeRead" aria-pressed="true">看字认读</button>
       <button class="segBtn" id="modeListen" aria-pressed="false">听音辨字</button>
+      <button class="segBtn" id="modePinyin" aria-pressed="false">拼音跟读</button>
     </div>
     <button class="iconToggle" id="sfxToggle" aria-pressed="false">🔕 音效</button>
   </div>
@@ -211,6 +213,7 @@ body.short .bubble{display:none}
     <p class="example" id="exampleText"></p>
     <button class="replay" id="replay">🔁 再听一次</button>
     <button class="replay" id="stopSpeak" aria-label="停止朗读">⏹ 停止</button>
+    <button class="replay" id="showPinyinAnswer" style="display:none">✅ 我跟读好了，显示答案</button>
     <p class="reveal" id="reveal"></p>
     <div class="choices" id="choices"></div>
     <p class="hint" id="hint" aria-live="polite"></p>
@@ -766,6 +769,8 @@ function setMode(m){
   $('modeRead').setAttribute('aria-pressed',m==='read');
   $('modeListen').classList.toggle('active',m==='listen');
   $('modeListen').setAttribute('aria-pressed',m==='listen');
+  $('modePinyin').classList.toggle('active',m==='pinyin');
+  $('modePinyin').setAttribute('aria-pressed',m==='pinyin');
   start();
 }
 function start(){
@@ -789,6 +794,7 @@ function render(){
   $('hint').textContent='';
   $('reveal').textContent='';
   $('next').classList.remove('show');
+  $('showPinyinAnswer').style.display=mode==='pinyin'?'inline-block':'none';
   if(mode==='read'){
     $('instruction').textContent='听一听、看拼音，找出这个字';
     $('target').innerHTML=`<span id="targetChar">${char}</span><span class="spk">🔊</span>`;
@@ -796,20 +802,29 @@ function render(){
     $('pinyin').style.visibility='visible';
     const ex=exampleOf(char);
     $('exampleText').textContent=ex?`组词：${ex}`:'';
-  }else{
+  }else if(mode==='listen'){
     $('instruction').textContent='先听一听读音，再选出正确的字';
     $('target').innerHTML=`<span class="listenIcon">🔊</span>`;
     $('pinyin').textContent='？？';
     $('pinyin').style.visibility='hidden';
     $('exampleText').textContent='';
+  }else{
+    $('instruction').textContent='先看拼音，跟着读一遍，再看正确答案';
+    $('target').innerHTML=`<span class="listenIcon">🔤</span>`;
+    $('pinyin').textContent=py;
+    $('pinyin').style.visibility='visible';
+    $('exampleText').textContent='请大声读：'+py;
   }
   const pool=getPool().filter(x=>x[0]!==char&&x[1]!==py);
   const others=shuffle(pool).slice(0,3);
   const opts=shuffle([[char,py],...others]);
+  $('choices').style.display=mode==='pinyin'?'none':'grid';
   $('choices').innerHTML=opts.map(([c],i)=>`<button class="choice" data-char="${c}"><span class="kbdHint">${i+1}</span>${c}</button>`).join('');
   document.querySelectorAll('.choice').forEach(b=>b.onclick=()=>choose(b));
   const renderedDeck=deck, renderedIndex=index;
-  setTimeout(()=>{if(deck===renderedDeck&&index===renderedIndex&&!answered)speakChar();},250);
+  setTimeout(()=>{if(deck===renderedDeck&&index===renderedIndex&&!answered){
+    if(mode==='pinyin') speakText(py,'pinyin'); else speakChar();
+  }},250);
   syncTouchBarAnswers();
 }
 function syncTouchBarAnswers(){
@@ -859,6 +874,18 @@ function choose(btn){
     setTimeout(()=>btn.classList.remove('wrong'),400);
   }
 }
+function revealPinyinAnswer(){
+  if(mode!=='pinyin'||answered)return;
+  const [char,py]=deck[index];
+  answered=true;
+  $('target').innerHTML=`<span id="targetChar">${char}</span><span class="spk">🔊</span>`;
+  const ex=exampleOf(char);
+  $('reveal').textContent=`正确答案：${char}（${py}）`+(ex?`　组词：${ex}`:'');
+  $('showPinyinAnswer').style.display='none';
+  $('next').classList.add('show');
+  $('bubble').textContent='跟读完成，看看答案对不对！';
+  speakText(`正确答案是${char}，拼音是${py}`,'praise');
+}
 function next(){
   if(!answered)return;
   stopSpeaking();
@@ -879,15 +906,21 @@ function next(){
   }
   index++;render();
 }
-$('target').onclick=speakChar;
+function speakCurrent(){
+  const [char,py]=deck[index];
+  if(mode==='pinyin') speakText(py,'pinyin'); else speakChar();
+}
+$('target').onclick=speakCurrent;
 $('target').onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();speakChar();}};
-$('replay').onclick=speakChar;
+$('replay').onclick=speakCurrent;
 $('stopSpeak').onclick=stopSpeaking;
 $('next').onclick=next;
 $('restart').onclick=start;
 $('again').onclick=start;
 $('modeRead').onclick=()=>setMode('read');
 $('modeListen').onclick=()=>setMode('listen');
+$('modePinyin').onclick=()=>setMode('pinyin');
+$('showPinyinAnswer').onclick=revealPinyinAnswer;
 $('clearMastery').onclick=()=>{
   if(confirm('确定要清除保存在这台电脑上的错题记录吗？')){
     mastery={};
